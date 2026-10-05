@@ -1,0 +1,10 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# 验证提交信息格式（可选）
+# 例如：确保提交信息不为空
+commit_msg=$(cat "$1")
+if [ -z "$commit_msg" ]; then
+  echo "❌ 提交信息不能为空"
+  exit 1
+fi
