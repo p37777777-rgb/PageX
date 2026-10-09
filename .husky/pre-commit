@@ -1,5 +1,2 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-# 运行 TypeScript 类型检查
+# Keep commit-time checks fast; run unit tests before pushing.
 pnpm compile

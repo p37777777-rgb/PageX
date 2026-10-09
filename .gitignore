@@ -8,16 +8,31 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Dependencies
+node_modules/
 node_modules
 .pnpm-store/
 
+# Lockfiles (根据团队需求决定，这里保留 pnpm-lock.yaml)
+# pnpm-lock.yaml
+# package-lock.json
+# yarn.lock
+
+# Husky-generated helpers (keep the hook scripts tracked)
+.husky/_/
+
 # Build output and generated files
-.output
+.output/
 dist/
+.wxt/
 stats.html
 stats-*.json
-.wxt
 *.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# WXT generated files
+.wxt/**/*
+!.wxt/.gitkeep
 
 # Local environment and browser configuration
 .env
@@ -31,11 +46,26 @@ web-ext.config.ts
 .cache/
 .vite/
 coverage/
+.nyc_output/
+.eslintcache
+.turbo/
+
+# Playwright reports, traces, and saved authentication state
+test-results/
+playwright-report/
+blob-report/
+**/playwright/.cache/
+**/playwright/.auth/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
 .DS_Store
 Thumbs.db
 Desktop.ini
@@ -44,3 +74,35 @@ Desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# Git helper files (临时文件，不提交)
+git-upload-commands.md
+
+# Debug files
+debug.log
+error.log
+
+# Browser extension builds
+*.zip
+*.crx
+*.xpi
+
+# Local testing
+test-output/
+.test-results/
