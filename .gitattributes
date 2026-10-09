@@ -1,0 +1,2 @@
+# Git hooks must use LF even in Windows checkouts.
+.husky/* text eol=lf

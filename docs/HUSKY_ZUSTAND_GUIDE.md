@@ -3,68 +3,84 @@
 ## 📦 Husky - Git Hooks 管理工具
 
 ### 什么是 Husky？
-Husky 可以让你在 Git 操作前自动运行脚本，比如在提交代码前检查代码质量。
+Husky 把项目脚本接到本地 Git 操作上。检查失败时阻止本次操作，方便尽早发现问题；它不会自动提交、推送或修改业务代码。
 
 ### 当前配置
 
-#### 1. pre-commit Hook
-在每次 `git commit` 前自动运行，位置：`.husky/pre-commit`
+当前项目使用 Husky 9，保留 `package.json` 中的 `"prepare": "husky"`。钩子直接写命令，不再引入旧的 `_/husky.sh`。
 
-```bash
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+| 时机 | 文件 | 检查内容 |
+| --- | --- | --- |
+| 提交前 | `.husky/pre-commit` | `pnpm compile`，TypeScript 类型检查 |
+| 提交信息保存后、创建提交前 | `.husky/commit-msg` | 首行符合 `type(scope): description` 格式 |
+| 推送前 | `.husky/pre-push` | `pnpm test --passWithNoTests`，运行 Vitest 单元测试 |
 
-# 运行 TypeScript 类型检查
-pnpm compile
+当前没有测试文件，所以推送检查暂时允许空测试集，并显示 `No test files found`；这不代表已有测试覆盖。添加首批单元测试后，删除 `.husky/pre-push` 中的 `--passWithNoTests`，改为 `pnpm test`。真实测试失败仍会阻止推送。
+
+类型检查使用当前工作区文件，覆盖范围由 `tsconfig.json` 的 `include` 决定，不仅检查暂存区。以后将代码迁到 `src/` 时，也要同步更新类型检查范围。
+
+构建、Playwright E2E 和 playground 测试暂不放入钩子：它们需要对应配置、入口或浏览器环境，而且执行较慢。相关设施就绪后手动运行或放入 CI。
+
+### 安装与启用
+
+首次克隆后安装依赖，`prepare` 会配置钩子。已有依赖时可单独执行 `pnpm prepare`。
+
+```powershell
+pnpm install
+pnpm prepare
+git config --get core.hooksPath
 ```
 
-**作用**：确保提交的代码没有 TypeScript 类型错误
+最后一条命令应输出 `.husky/_`。
 
-#### 2. commit-msg Hook
-在提交信息被保存前运行，位置：`.husky/commit-msg`
+需要提交 `.husky/pre-commit`、`.husky/commit-msg`、`.husky/pre-push` 和 `.gitattributes`。不要提交自动生成的 `.husky/_/`。Windows 下 `.gitattributes` 为钩子指定 LF 换行，避免 Shell 脚本被 CRLF 换行影响。
 
-```bash
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+### 提交信息格式
 
-# 验证提交信息不为空
-commit_msg=$(cat "$1")
-if [ -z "$commit_msg" ]; then
-  echo "❌ 提交信息不能为空"
-  exit 1
-fi
+```text
+feat(popup): 添加设置面板
+fix: 修复页面消息处理
+docs: 更新开发说明
+refactor(store)!: 调整状态结构
 ```
 
-**作用**：验证 commit message 格式
+`scope` 和表示不兼容变更的 `!` 可选，描述可以使用中文。支持的类型为 `feat`、`fix`、`docs`、`style`、`refactor`、`perf`、`test`、`build`、`ci`、`chore`、`revert`。
+
+这是不额外安装依赖的首行格式检查，不是完整的 commitlint 规则集。Git 生成的 merge、revert 和 autosquash 消息允许通过，避免干扰合并、回退和整理历史。
 
 ### 如何使用
 
-1. **正常提交代码**：
-```bash
+正常开发时无需手动执行钩子：
+
+```powershell
+pnpm compile
+pnpm test --passWithNoTests
 git add .
-git commit -m "feat: 添加新功能"
+git commit -m "feat(popup): 添加设置面板"
+git push
 ```
 
-2. **如果遇到 Hook 报错**：
-   - 修复代码中的类型错误
-   - 或者临时跳过 Hook（不推荐）：
-```bash
-git commit --no-verify -m "临时提交"
+前两条用于主动检查，`git commit` 和 `git push` 仍会自动运行对应钩子。任何检查失败，都先修复终端提示的问题，再重试 Git 操作。
+
+可以直接验证钩子，不创建提交，也不连接 GitHub：
+
+```powershell
+git hook run pre-commit
+git hook run pre-push
 ```
 
-### 添加更多 Hooks
+### 后续扩展
 
-创建新的 hook 文件：
-```bash
-# 在 commit 之前运行 lint
-echo '#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+- 当前未配置 ESLint、Prettier 或 lint-staged，不要直接向钩子添加不存在的 `pnpm lint` 命令。
+- 确定格式规范并完成 ESLint/Prettier 配置后，再用 lint-staged 只处理暂存文件；`tsc --noEmit` 仍应检查整个项目。
+- 增加单元测试后，移除推送钩子的空测试集豁免。
+- 团队协作时在 CI 重复运行类型检查和测试，并配置合并保护。本地钩子可以被跳过，不能替代 CI。
 
-pnpm run lint' > .husky/pre-commit
+### 忽略文件说明
 
-# 给文件添加执行权限
-chmod +x .husky/pre-commit
-```
+`.gitignore` 已补充 Husky 生成目录、覆盖率与检查缓存、Playwright 测试结果及报告、`playwright/.auth/` 登录状态目录（包括子项目）。真实 `.env` 文件仍被忽略，示例环境变量文件和 `pnpm-lock.yaml` 保留。
+
+不要把令牌写进环境变量示例文件，也不要把登录状态保存到未忽略的位置。忽略规则不会自动移除已经被 Git 跟踪的文件。
 
 ---
 
@@ -217,7 +233,8 @@ const count = useAppStore(selectCount);
 1. 在 `store.ts` 中添加新的状态和 actions
 2. 在组件中使用 `useAppStore` hook
 3. 测试功能
-4. 提交代码（Husky 会自动检查类型）
+4. 提交代码（Husky 自动检查类型和提交信息）
+5. 推送代码（Husky 自动运行单元测试）
 
 ### 示例：添加待办事项功能
 
@@ -296,7 +313,10 @@ function TodoList() {
 ## 🛠️ 常见问题
 
 **Q: Husky hooks 不生效？**
-A: 运行 `pnpm install` 重新安装依赖，或手动运行 `pnpm prepare`
+A: 运行 `pnpm prepare`，并确认 `git config --get core.hooksPath` 输出 `.husky/_`。如果仅在 IDE 中失败，检查 IDE 是否能找到 Node.js 和 pnpm。修改 PATH 后重启 IDE。
+
+**Q: 推送时提示 No test files found？**
+A: 当前允许空测试集，因此会放行；这不表示已有测试通过。添加单元测试后移除 `.husky/pre-push` 中的 `--passWithNoTests`。
 
 **Q: 如何禁用某个 hook？**
 A: 删除对应的 `.husky/hook-name` 文件，或在文件中注释掉相关命令

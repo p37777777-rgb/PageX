@@ -1,0 +1,3 @@
+# Allow the initial scaffold to have no unit tests; test failures still block pushes.
+# Remove --passWithNoTests once the first unit tests are added.
+pnpm test --passWithNoTests

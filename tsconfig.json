@@ -13,9 +13,13 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "~/*": ["./*"]
+      "@/*": ["src/*"],
+      "~/*": ["src/*"]
     }
   },
-  "include": ["entrypoints", "components", "utils", "assets", "wxt.config.ts", ".wxt/wxt.d.ts"]
+  "include": [
+    ".wxt/**/*",
+    "src/**/*",
+    "wxt.config.ts"
+  ]
 }
