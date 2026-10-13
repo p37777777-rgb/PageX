@@ -9,73 +9,72 @@ lerna-debug.log*
 
 # Dependencies
 node_modules/
-node_modules
 .pnpm-store/
 
-# Lockfiles (根据团队需求决定，这里保留 pnpm-lock.yaml)
+# Keep the lockfile tracked
 # pnpm-lock.yaml
-# package-lock.json
-# yarn.lock
 
-# Husky-generated helpers (keep the hook scripts tracked)
+# Husky generated helpers; hook scripts stay tracked
 .husky/_/
 
-# Build output and generated files
+# WXT, Vite, and TypeScript build output
 .output/
 dist/
 .wxt/
+.improve/
 stats.html
 stats-*.json
 *.tsbuildinfo
 *.js.map
 *.d.ts.map
+web-ext.config.ts
 
-# WXT generated files
-.wxt/**/*
-!.wxt/.gitkeep
+# Packed extension artifacts
+*.zip
+*.crx
+*.xpi
+*.pem
 
-# Local environment and browser configuration
+# Local environment
 .env
 .env.*
 !.env.example
 !.env.sample
 !.env.template
-web-ext.config.ts
 
-# Caches and test coverage
+# Caches
 .cache/
 .vite/
-coverage/
-.nyc_output/
 .eslintcache
 .turbo/
 
-# Playwright reports, traces, and saved authentication state
+# Tests
+coverage/
+.nyc_output/
 test-results/
+.test-results/
+test-output/
 playwright-report/
 blob-report/
 **/playwright/.cache/
 **/playwright/.auth/
 
-# Editor directories and files
+# Editors
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/launch.json
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
-Desktop.ini
+.trae/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+*.swp
+*.swo
 *.sw?
 
-# OS generated files
+# OS
 .DS_Store
 .DS_Store?
 ._*
@@ -83,6 +82,7 @@ Desktop.ini
 .Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Temporary files
 *.tmp
@@ -91,18 +91,5 @@ Thumbs.db
 *.backup
 *~
 
-# Git helper files (临时文件，不提交)
+# Local git notes
 git-upload-commands.md
-
-# Debug files
-debug.log
-error.log
-
-# Browser extension builds
-*.zip
-*.crx
-*.xpi
-
-# Local testing
-test-output/
-.test-results/
