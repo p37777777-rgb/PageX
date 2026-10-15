@@ -1,0 +1,252 @@
+import { CHANNEL } from '@/shared/contracts/channel';
+import { runAgent } from '@/features/agent/runtime/runtime';
+import {
+    createPageStore,
+    emptyConversation,
+    titleFromPrompt,
+} from '@/features/agent/session/conversations';
+import { adoptLiveStore, applyAgentEventToStore, nextStoreRevision } from '@/features/agent/session/session-live';
+import { conversationVaultKey } from '@/features/agent/session/vault';
+import { loadSettings, saveTabUi } from '@/shared/storage/storage';
+import type { AgentEvent } from '@/shared/contracts/agent';
+import type { ChatMessage, PageConversationStore, UserBadge, UserReference } from '@/shared/contracts/session';
+import { nowId } from '@/shared/utils/utils';
+import { beginBusyKeepAlive, endBusyKeepAlive } from '@/shared/extension/keepalive';
+import { createBridge, ensureContentScript, sendToContent } from './content-bridge';
+import {
+    queueTabStoreWrite,
+    readTabStore,
+    resolveTabUrl,
+    tabDomains,
+    tabStores,
+    writeTabStore,
+} from './tab-store';
+//按标签页启动、停止和切换 Agent。
+//同一标签页不要同时跑两个任务。运行时保持 Service Worker 醒着，停止时放开。事件从这里广播回对应标签页。
+export type AgentControl = {
+    abort: AbortController;
+    conversationId?: string;
+    sessionId: string;
+    store: PageConversationStore;
+    tabId: number;
+};
+
+export const running = new Map<number, AgentControl>();
+
+export function findRunningByTab(tabId: number): AgentControl | undefined {
+    return [...running.values()].find((control) => control.tabId === tabId);
+}
+
+export async function retargetAgent(fromTabId: number, toTabId: number): Promise<void> {
+    if (fromTabId === toTabId) return;
+    const control = findRunningByTab(fromTabId);
+    if (!control) return;
+    const displaced = findRunningByTab(toTabId);
+    if (displaced && displaced !== control) {
+        let targetUrl = '';
+        try {
+            const tab = await browser.tabs.get(toTabId);
+            targetUrl = tab?.url || '';
+        } catch {
+            // ignore
+        }
+        const hint = targetUrl ? `使用 tabs.create("${targetUrl}") 打开新标签页` : '使用 tabs.create 打开新标签页';
+        throw new Error(
+            `标签页 (tabId: ${toTabId}) 正在被另一个活跃的 Agent 任务占用。为避免冲突，已阻止切换到该标签页。建议${hint}以继续执行。`,
+        );
+    }
+    const live = tabStores.get(fromTabId);
+    running.delete(control.tabId);
+    running.delete(fromTabId);
+    control.tabId = toTabId;
+    running.set(toTabId, control);
+
+    if (live) {
+        live.panelOpen = false;
+    }
+    void saveTabUi(fromTabId, { panelOpen: false }).catch(() => {});
+    void sendToContent(fromTabId, 'ui.collapse', {}).catch(() => {});
+    browser.tabs.sendMessage(fromTabId, {
+        channel: CHANNEL,
+        kind: 'agent-retarget',
+        working: false,
+        agentActive: running.size > 0,
+    }).catch(() => {});
+
+    if (live) {
+        control.store = {
+            ...adoptLiveStore(tabStores.get(toTabId), control.store, control.conversationId),
+            panelOpen: true,
+            sessionId: control.sessionId,
+            revision: nextStoreRevision(tabStores.get(toTabId)),
+        };
+        await writeTabStore(toTabId, control.store);
+    }
+    void saveTabUi(toTabId, { panelOpen: true }).catch(() => {});
+
+    try {
+        await ensureContentScript(toTabId);
+        void sendToContent(toTabId, 'ui.open', {}).catch(() => {});
+        browser.tabs.sendMessage(toTabId, {
+            channel: CHANNEL,
+            kind: 'agent-event',
+            event: { type: 'status', message: 'Agent 已就绪' },
+            sessionId: control.sessionId,
+            revision: control.store.revision ?? 0,
+            conversationId: control.conversationId,
+            store: control.store,
+        }).catch(() => {});
+    } catch {
+        // protected destination
+    }
+}
+
+function broadcast(control: AgentControl, event: AgentEvent) {
+    const includeStore =
+        event.type !== 'token' &&
+        event.type !== 'reasoning' &&
+        event.type !== 'thinking' &&
+        event.type !== 'status' &&
+        event.type !== 'tool-start';
+    browser.tabs.sendMessage(control.tabId, {
+        channel: CHANNEL,
+        kind: 'agent-event',
+        event,
+        sessionId: control.sessionId,
+        revision: control.store.revision ?? 0,
+        conversationId: control.conversationId,
+        store: includeStore ? control.store : undefined,
+    }).catch(() => {});
+}
+
+function stopControl(control: AgentControl, broadcastEvent: boolean) {
+    running.delete(control.tabId);
+    control.abort.abort();
+    if (!control.conversationId) return;
+    const event: AgentEvent = { type: 'error', message: '任务已停止' };
+    control.store = applyAgentEventToStore(control.store, control.conversationId, event);
+    tabStores.set(control.tabId, control.store);
+    queueTabStoreWrite(control.tabId, control.store, true);
+    if (broadcastEvent) broadcast(control, event);
+}
+
+export async function startAgent(
+    tabId: number,
+    prompt: string,
+    conversationId?: string,
+    history?: ChatMessage[],
+    context?: string,
+    imageDataUrl?: string,
+    badges?: UserBadge[],
+    references?: UserReference[],
+): Promise<{ ok: true; tabId: number; sessionId: string; conversationId: string }> {
+    const previous = findRunningByTab(tabId) ?? running.get(tabId);
+    running.delete(tabId);
+    if (previous) stopControl(previous, false);
+    const abort = new AbortController();
+    const currentUrl = await resolveTabUrl(tabId);
+    const existing =
+        tabStores.get(tabId) ??
+        (await readTabStore(tabId)) ??
+        createPageStore(conversationVaultKey(currentUrl ?? '') ?? undefined);
+    const targetId = conversationId ?? existing.activeId;
+    let conversations = existing.conversations;
+    let target = conversations.find((item) => item.id === targetId);
+    if (!target) {
+        target = emptyConversation('会话 1', tabDomains.get(tabId) ? [tabDomains.get(tabId)!] : []);
+        target.id = targetId;
+        target.messages = history ?? [];
+        conversations = [...conversations, target];
+    }
+    const lastMessage = target.messages.at(-1);
+    const hasPrompt =
+        lastMessage?.role === 'user' &&
+        lastMessage.content.trim() === prompt.trim() &&
+        lastMessage.imageDataUrl === imageDataUrl;
+    const revision = nextStoreRevision(existing);
+    conversations = conversations.map((item) =>
+        item.id === targetId
+            ? {
+                ...item,
+                revision: (item.revision ?? 0) + 1,
+                updatedAt: Date.now(),
+                title: titleFromPrompt(item.title, prompt),
+                messages: hasPrompt
+                    ? item.messages
+                    : [
+                        ...item.messages,
+                        {
+                            id: nowId('m'),
+                            role: 'user' as const,
+                            content: prompt,
+                            imageDataUrl,
+                            badges,
+                            references,
+                        },
+                    ],
+                running: true,
+                thinking: '正在调用模型…',
+                startedAt: item.startedAt ?? Date.now(),
+                error: '',
+            }
+            : item,
+    );
+    const sessionId = nowId('s');
+    const store: PageConversationStore = {
+        ...existing,
+        activeId: targetId,
+        conversations,
+        panelOpen: true,
+        sessionId,
+        revision,
+    };
+    const control: AgentControl = { abort, conversationId: targetId, sessionId, store, tabId };
+    running.set(tabId, control);
+    tabStores.set(tabId, store);
+    await writeTabStore(tabId, store);
+    beginBusyKeepAlive();
+    const settings = await loadSettings();
+    const isCurrent = () => findRunningByTab(control.tabId)?.abort === abort;
+    const done = runAgent({
+        prompt,
+        context,
+        tabId,
+        url: currentUrl,
+        getTabId: () => control.tabId,
+        sessionId,
+        conversationId: targetId,
+        history,
+        imageDataUrl,
+        badges,
+        references,
+        bridge: createBridge(control, settings, retargetAgent),
+        emit: (event) => {
+            if (!isCurrent()) return;
+            control.store = applyAgentEventToStore(control.store, targetId, event);
+            tabStores.set(control.tabId, control.store);
+            queueTabStoreWrite(
+                control.tabId,
+                control.store,
+                event.type === 'done' || event.type === 'error',
+            );
+            broadcast(control, event);
+        },
+        signal: abort.signal,
+    }).finally(() => {
+        if (isCurrent()) running.delete(control.tabId);
+        endBusyKeepAlive();
+    });
+    void done.catch(() => undefined);
+    return { ok: true, tabId, sessionId, conversationId: targetId };
+}
+
+export function stopAgent(tabId: number) {
+    const control = findRunningByTab(tabId) ?? running.get(tabId);
+    running.delete(tabId);
+    if (control) stopControl(control, true);
+}
+
+export function stopAgentForTab(tabId: number): void {
+    const control = findRunningByTab(tabId) ?? running.get(tabId);
+    if (control) stopControl(control, true);
+}

@@ -7,15 +7,9 @@ import type {
     TurnUsage,
     UserReference,
 } from '@/shared/contracts/session-messages';
-/*
-* 缺文件
-* 缺文件
-* 缺文件
-* 缺文件
-
-*/
+import { toolLabel } from './tool-display';
 import { redactText, redactValue } from '@/shared/contracts/policy';
-
+//「无状态工具箱」——维护带 text/thinking/tool 三种部件的 assistant 消息
 export type AssistantBlock =
     | { type: 'thinking'; text: string }
     | { type: 'text'; text: string }
@@ -54,14 +48,52 @@ export function messageParts(message: ChatMessage): AssistantPart[] {
     ];
 }
 
-
+export function messageBlocks(message: ChatMessage): AssistantBlock[] {
+    const blocks: AssistantBlock[] = [];
+    for (const part of messageParts(message)) {
+        if (part.type === 'thinking') {
+            if (part.text) blocks.push({ type: 'thinking', text: part.text });
+            continue;
+        }
+        if (part.type === 'text') {
+            if (part.text) blocks.push({ type: 'text', text: part.text });
+            continue;
+        }
+        const last = blocks.at(-1);
+        if (last?.type === 'tools') last.tools.push(part);
+        else blocks.push({ type: 'tools', tools: [part] });
+    }
+    return blocks;
+}
 
 export function shouldHoldToolGroupOpen(streaming: boolean, followingBlocks: AssistantBlock[]): boolean {
     if (!streaming) return false;
     return !followingBlocks.some((block) => block.type === 'text' && Boolean(block.text.trim()));
 }
 
+export function appendAssistantToken(message: ChatMessage, text: string): ChatMessage {
+    if (!text) return message;
+    const parts = [...messageParts(message)];
+    const last = parts.at(-1);
+    if (last?.type === 'text') {
+        parts[parts.length - 1] = { type: 'text', text: last.text + text };
+    } else {
+        parts.push({ type: 'text', text });
+    }
+    return syncDerived(message, parts);
+}
 
+export function appendAssistantThinking(message: ChatMessage, text: string): ChatMessage {
+    if (!text) return message;
+    const parts = [...messageParts(message)];
+    const last = parts.at(-1);
+    if (last?.type === 'thinking') {
+        parts[parts.length - 1] = { type: 'thinking', text: last.text + text };
+    } else {
+        parts.push({ type: 'thinking', text });
+    }
+    return syncDerived(message, parts);
+}
 
 export function appendAssistantTool(message: ChatMessage, tool: ChatToolCall): ChatMessage {
     const parts = [...messageParts(message)];
@@ -83,8 +115,74 @@ export function updateAssistantTool(
     );
 }
 
+export function applyAssistantFinalText(messages: ChatMessage[], text: string, id: string): ChatMessage[] {
+    if (!text) return messages;
+    const last = messages.at(-1);
+    if (last?.role !== 'assistant') {
+        return [...messages, appendAssistantToken({ id, role: 'assistant', content: '' }, text)];
+    }
+    const parts = [...messageParts(last)];
+    const currentText = parts
+        .filter((part): part is Extract<AssistantPart, { type: 'text' }> => part.type === 'text')
+        .map((part) => part.text)
+        .join('');
+    if (currentText === text || (currentText.startsWith(text) && currentText.length > text.length)) {
+        return messages;
+    }
+    let textIndex = -1;
+    for (let index = parts.length - 1; index >= 0; index -= 1) {
+        if (parts[index]?.type === 'text') {
+            textIndex = index;
+            break;
+        }
+    }
+    if (text.startsWith(currentText)) {
+        const suffix = text.slice(currentText.length);
+        if (!suffix) return messages;
+        if (textIndex < 0) parts.push({ type: 'text', text: suffix });
+        else {
+            const current = (parts[textIndex] as Extract<AssistantPart, { type: 'text' }>).text;
+            parts[textIndex] = { type: 'text', text: current + suffix };
+        }
+        return messages.map((item, index) =>
+            index === messages.length - 1 ? syncDerived(item, parts) : item,
+        );
+    }
+    if (textIndex < 0) {
+        parts.push({ type: 'text', text });
+    } else {
+        const current = (parts[textIndex] as Extract<AssistantPart, { type: 'text' }>).text;
+        if (current.startsWith(text) && current.length > text.length) return messages;
+        if (text.length < current.length && !text.startsWith(current) && !current.startsWith(text)) {
+            return messages;
+        }
+        if (text.length <= current.length) return messages;
+        parts[textIndex] = { type: 'text', text };
+    }
+    return messages.map((item, index) =>
+        index === messages.length - 1 ? syncDerived(item, parts) : item,
+    );
+}
 
+export function applyAssistantToken(messages: ChatMessage[], text: string, id: string): ChatMessage[] {
+    const last = messages.at(-1);
+    if (last?.role === 'assistant') {
+        return messages.map((item, index) =>
+            index === messages.length - 1 ? appendAssistantToken(item, text) : item,
+        );
+    }
+    return [...messages, appendAssistantToken({ id, role: 'assistant', content: '' }, text)];
+}
 
+export function applyAssistantThinking(messages: ChatMessage[], text: string, id: string): ChatMessage[] {
+    const last = messages.at(-1);
+    if (last?.role === 'assistant') {
+        return messages.map((item, index) =>
+            index === messages.length - 1 ? appendAssistantThinking(item, text) : item,
+        );
+    }
+    return [...messages, appendAssistantThinking({ id, role: 'assistant', content: '' }, text)];
+}
 
 function isEmptyArgs(args: unknown): boolean {
     if (args == null) return true;
@@ -104,7 +202,37 @@ function mergeToolStatus(current?: TaskStatus, incoming?: TaskStatus): TaskStatu
     return incoming ?? current ?? 'running';
 }
 
-
+export function applyAssistantToolStart(
+    messages: ChatMessage[],
+    tool: ChatToolCall,
+    id: string,
+): ChatMessage[] {
+    tool = { ...tool, args: redactValue(tool.args) };
+    const existing = messages.find((item) => hasToolId(messageParts(item), tool.id));
+    if (existing) {
+        const current = messageParts(existing).find(
+            (part): part is AssistantToolPart => part.type === 'tool' && part.id === tool.id,
+        );
+        const args =
+            current && !isEmptyArgs(current.args) && isEmptyArgs(tool.args) ? current.args : tool.args;
+        return messages.map((item) =>
+            hasToolId(messageParts(item), tool.id)
+                ? updateAssistantTool(item, tool.id, {
+                    args,
+                    name: tool.name || current?.name,
+                    status: mergeToolStatus(current?.status, tool.status),
+                })
+                : item,
+        );
+    }
+    const last = messages.at(-1);
+    if (last?.role === 'assistant') {
+        return messages.map((item, index) =>
+            index === messages.length - 1 ? appendAssistantTool(item, tool) : item,
+        );
+    }
+    return [...messages, appendAssistantTool({ id, role: 'assistant', content: '' }, tool)];
+}
 
 export function applyAssistantToolResult(
     messages: ChatMessage[],
@@ -122,7 +250,13 @@ export function applyAssistantToolResult(
     );
 }
 
-
+export function applyAssistantUsage(messages: ChatMessage[], usage: TurnUsage, id: string): ChatMessage[] {
+    const last = messages.at(-1);
+    if (last?.role === 'assistant') {
+        return messages.map((item, index) => (index === messages.length - 1 ? { ...item, usage } : item));
+    }
+    return [...messages, { id, role: 'assistant', content: '', usage }];
+}
 
 export function settleAssistantTools(
     message: ChatMessage,
@@ -207,7 +341,67 @@ export function formatUserMessageContent(
     return content ? `${prefix}\n${content}` : prefix;
 }
 
+export function toModelMessages(
+    history: ChatMessage[],
+    prompt?: string,
+): Array<{
+    role: 'user' | 'assistant';
+    content:
+        | string
+        | Array<
+        | { type: 'text'; text: string }
+        | { type: 'image_url'; image_url: { url: string } }
+    >;
+}> {
+    const converted: Array<{
+        role: 'user' | 'assistant';
+        content:
+            | string
+            | Array<
+            | { type: 'text'; text: string }
+            | { type: 'image_url'; image_url: { url: string } }
+        >;
+    }> = [];
+    for (const message of history) {
+        if (message.role !== 'user' && message.role !== 'assistant') continue;
+        let content = message.content.trim();
+        if (!content && message.role === 'assistant') {
+            const tools = messageParts(message).filter(
+                (part): part is AssistantToolPart => part.type === 'tool',
+            );
+            if (tools.length) content = `已执行：${tools.map((tool) => toolLabel(tool.name)).join('、')}`;
+        }
+        if (!content && message.role === 'user' && message.references?.length) {
+            content = '';
+        } else if (!content) {
+            continue;
+        }
 
+        const formattedContent =
+            message.role === 'user'
+                ? formatUserMessageContent(content, message.references)
+                : content;
+
+        converted.push({
+            role: message.role,
+            content:
+                message.role === 'user' && message.imageDataUrl
+                    ? modelUserContent(formattedContent, message.imageDataUrl)
+                    : formattedContent,
+        });
+    }
+    const last = converted.at(-1);
+    const lastText =
+        typeof last?.content === 'string'
+            ? last.content
+            : last?.content.find(
+                (part): part is { type: 'text'; text: string } => part.type === 'text',
+            )?.text;
+    if (prompt && last?.role === 'user' && lastText === prompt.trim()) {
+        converted.pop();
+    }
+    return converted;
+}
 
 export function modelUserContent(
     prompt: string,
