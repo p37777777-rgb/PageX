@@ -1,4 +1,6 @@
 import { isSparseConversation, pickRicherConversation } from '@/features/agent/session/conversations';
+import { messageBlocks } from '@/features/agent/session/messages';
+import { toolLabel } from '@/features/agent/session/tool-display';
 //差文件
 //差文件
 //差文件
@@ -119,9 +121,68 @@ export function listVaultSummaries(vaults: VaultMap): Array<{
         .sort((left, right) => left.domain.localeCompare(right.domain, 'zh-CN'));
 }
 
+function toIso(value: number): string {
+    return value ? new Date(value).toISOString() : '';
+}
 
+export function toTranscriptTurn(
+    message: ChatMessage,
+    options: ConversationExportOptions = {},
+): ConversationTranscriptTurn {
+    const blocks = messageBlocks(message);
+    const thinking = blocks
+        .filter((block) => block.type === 'thinking')
+        .map((block) => block.text)
+        .join('\n\n')
+        .trim();
+    const text = blocks
+        .filter((block) => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n\n')
+        .trim() || message.content;
+    const tools = blocks.flatMap((block) => (block.type === 'tools' ? block.tools : [])).map((tool) => ({
+        id: tool.id,
+        name: tool.name,
+        label: toolLabel(tool.name),
+        args: redactValue(tool.args),
+        output: tool.output ? redactText(tool.output) : undefined,
+        status: tool.status,
+    }));
+    return {
+        id: message.id,
+        role: message.role,
+        text: redactText(text),
+        thinking: thinking ? redactText(thinking) : undefined,
+        tools: tools.length ? tools : undefined,
+        badges: message.badges,
+        usage: message.usage,
+        hasImage: Boolean(message.imageDataUrl),
+        imageDataUrl: options.includeImages ? message.imageDataUrl : undefined,
+    };
+}
 
-
+export function toExportedConversation(
+    item: PageConversation,
+    options: ConversationExportOptions = {},
+): ExportedConversation {
+    return {
+        id: item.id,
+        title: item.title,
+        vaults: item.vaults,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        createdAtISO: toIso(item.createdAt),
+        updatedAtISO: toIso(item.updatedAt),
+        messageCount: item.messages.length,
+        budget: conversationBudget(item),
+        error: item.error || undefined,
+        tasks: item.tasks.map((task) => ({
+            ...task,
+            detail: task.detail ? redactText(task.detail) : task.detail,
+        })),
+        transcript: item.messages.map((message) => toTranscriptTurn(message, options)),
+    };
+}
 
 function conversationBudget(item: PageConversation): { modelCalls: number; toolCalls: number } {
     const turns = item.messages

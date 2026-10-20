@@ -7,6 +7,7 @@ import { ScreenAnnotator } from '@/features/canvas/ScreenAnnotator';
 import { ElementPicker } from '@/features/canvas/ElementPicker';
 import { rpc } from '@/shared/extension/rpc-client';
 import type { ObservedElement } from '@/shared/contracts/page';
+import type { TaskRow } from '@/shared/contracts/session';
 import { pageObserver } from '@/features/page/observer';
 import { uiEvents } from '@/features/page/ui-events';
 import {
@@ -388,7 +389,7 @@ export function AgentApp({
     }, [teaching.session?.status]);
 
     const agentCapturingScreen = session.tasks.some(
-        (task) => task.title === 'capture_screenshot' && task.status === 'running',
+        (task: TaskRow) => task.title === 'capture_screenshot' && task.status === 'running',
     );
     const panelHidden =
         capturingScreen || toolCaptureHidden || agentCapturingScreen || selectingElement || teachingCommentMode === 'pick';
