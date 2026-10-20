@@ -91,12 +91,22 @@ Desktop.ini
 *.backup
 *~
 
-# Local git notes
-git-upload-commands.md
-
-# Local learning notes and leftover starter files.
+# Local notes and starter leftovers. Only the extension, its MCP host,
+# and later its tests belong in the repository.
 # Leading slashes keep src/entrypoints and src/assets tracked.
 /learning/
 /docs/
 /entrypoints/
 /assets/
+/*.md
+!/README.md
+git-upload-commands.md
+
+# Agent workspace data (not part of the extension)
+.workbuddy/
+
+# Template and legacy graphics the running extension does not import.
+public/wxt.svg
+src/assets/react.svg
+public/pagent-bot.svg
+src/assets/pagent-bot.svg
