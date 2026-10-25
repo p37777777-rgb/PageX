@@ -50,11 +50,11 @@ export function PopupApp() {
         <main className="w-89 bg-surface text-ink">
             <section>
                 <header className="flex items-center gap-3 border-b border-line px-4 py-3.5">
-          <span className="pagent-settings-logo" aria-hidden>
+          <span className="pagex-settings-logo" aria-hidden>
             <BotIcon size={34} />
           </span>
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-[14px] font-semibold tracking-[-0.01em]">Pagent</h1>
+                        <h1 className="text-[14px] font-semibold tracking-[-0.01em]">PageX</h1>
                         <p className="truncate text-[11px] text-ink-3">
                             {settings ? `${settings.model.provider} · ${settings.model.model}` : '页面内智能 Agent'}
                         </p>

@@ -36,7 +36,7 @@ const INTERACTIVE = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
-export const SKIP = 'script, style, noscript, svg, path, pagent-root, [data-pagent-ui]';
+export const SKIP = 'script, style, noscript, svg, path, pagex-root, [data-pagex-ui]';
 
 export const INTERACTIVE_CURSORS = new Set([
     'pointer',

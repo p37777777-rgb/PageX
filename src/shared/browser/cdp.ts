@@ -99,7 +99,7 @@ async function requireDebugger(): Promise<ChromeDebugger> {
         throw new Error('尚未授予调试器权限。请重新加载扩展并允许「调试器」权限，然后在设置中开启 CDP。');
     }
 
-    throw new Error('已有调试器权限，但当前后台还未加载 chrome.debugger。请到 chrome://extensions 重新加载 Pagent。');
+    throw new Error('已有调试器权限，但当前后台还未加载 chrome.debugger。请到 chrome://extensions 重新加载 PageX。');
 }
 
 function target(tabId: number): Debuggee {

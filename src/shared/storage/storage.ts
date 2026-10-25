@@ -37,45 +37,45 @@ import type {
 } from '@/shared/contracts/session';
 import { applyVaultStoreUpdate, conversationVaultKey, viewForVault } from '@/features/agent/session/vault';
 
-export const settingsItem = storage.defineItem<AgentSettings>('local:pagent-settings', {
+export const settingsItem = storage.defineItem<AgentSettings>('local:pagex-settings', {
     fallback: DEFAULT_SETTINGS,
 });
 
-export const mcpConfigItem = storage.defineItem<McpConfig>('local:pagent-mcp-config', {
+export const mcpConfigItem = storage.defineItem<McpConfig>('local:pagex-mcp-config', {
     fallback: EMPTY_MCP_CONFIG,
 });
 
 export const checkpointsItem = storage.defineItem<Record<string, Checkpoint>>(
-    'local:pagent-checkpoints',
+    'local:pagex-checkpoints',
     { fallback: {} },
 );
 
-export const secretsItem = storage.defineItem<SecretMap>('session:pagent-secrets', {
+export const secretsItem = storage.defineItem<SecretMap>('session:pagex-secrets', {
     fallback: {},
 });
 
-export const persistedSecretsItem = storage.defineItem<SecretMap>('local:pagent-secrets', {
+export const persistedSecretsItem = storage.defineItem<SecretMap>('local:pagex-secrets', {
     fallback: {},
 });
 
-export const memorySecretItem = storage.defineItem<string>('local:pagent-memory-secret', {
+export const memorySecretItem = storage.defineItem<string>('local:pagex-memory-secret', {
     fallback: '',
 });
 
 const pageConversationsItem = storage.defineItem<Record<string, PageConversationStore>>(
-    'session:pagent-page-conversations',
+    'session:pagex-page-conversations',
     { fallback: {} },
 );
 
-const vaultsItem = storage.defineItem<VaultMap>('local:pagent-vaults', {
+const vaultsItem = storage.defineItem<VaultMap>('local:pagex-vaults', {
     fallback: {},
 });
 
-const tabUiItem = storage.defineItem<Record<string, { panelOpen?: boolean }>>('session:pagent-tab-ui', {
+const tabUiItem = storage.defineItem<Record<string, { panelOpen?: boolean }>>('session:pagex-tab-ui', {
     fallback: {},
 });
 
-const sessionScopeItem = storage.defineItem<string>('session:pagent-session-scope', {
+const sessionScopeItem = storage.defineItem<string>('session:pagex-session-scope', {
     fallback: '',
 });
 

@@ -5,8 +5,8 @@ describe('buildSystemPrompt', () => {
     it('wraps the base prompt and enables memory guidance by default', () => {
         const prompt = buildSystemPrompt();
 
-        expect(prompt.startsWith('<pagent_prompt>\n')).toBe(true);
-        expect(prompt.endsWith('\n</pagent_prompt>')).toBe(true);
+        expect(prompt.startsWith('<pagex_prompt>\n')).toBe(true);
+        expect(prompt.endsWith('\n</pagex_prompt>')).toBe(true);
         expect(prompt).toContain(SYSTEM_PROMPT);
         expect(prompt).toContain('<memory_guidance>');
         expect(prompt).not.toContain('<memory_context');
@@ -18,7 +18,7 @@ describe('buildSystemPrompt', () => {
     it('excludes memory guidance and supplied context when memory is disabled', () => {
         const prompt = buildSystemPrompt('private memory', false);
 
-        expect(prompt).toBe(`<pagent_prompt>\n${SYSTEM_PROMPT}\n</pagent_prompt>`);
+        expect(prompt).toBe(`<pagex_prompt>\n${SYSTEM_PROMPT}\n</pagex_prompt>`);
         expect(prompt).not.toContain('<memory_guidance>');
         expect(prompt).not.toContain('<memory_context');
         expect(prompt).not.toContain('private memory');

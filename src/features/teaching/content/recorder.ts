@@ -12,10 +12,10 @@ export function sanitizeRecordedUrl(raw: string): string {
     return sanitizeUrl(raw);
 }
 
-function fromPagentUi(event: Event): boolean {
+function fromPagexUi(event: Event): boolean {
     return event.composedPath().some((node) => {
         if (!(node instanceof Element)) return false;
-        return node.localName === 'pagent-root' || node.hasAttribute('data-pagent-ui');
+        return node.localName === 'pagex-root' || node.hasAttribute('data-pagex-ui');
     });
 }
 
@@ -166,7 +166,7 @@ export function createTeachingRecorder(emit: Emit) {
     };
 
     const onClick = (event: MouseEvent) => {
-        if (fromPagentUi(event)) return;
+        if (fromPagexUi(event)) return;
         const element = targetElement(event);
         if (!element) return;
         if (clickTimer) window.clearTimeout(clickTimer);
@@ -179,14 +179,14 @@ export function createTeachingRecorder(emit: Emit) {
     };
 
     const onDoubleClick = (event: MouseEvent) => {
-        if (fromPagentUi(event)) return;
+        if (fromPagexUi(event)) return;
         if (clickTimer) window.clearTimeout(clickTimer);
         clickTimer = undefined;
         queue('double_click', targetElement(event));
     };
 
     const onInput = (event: Event) => {
-        if (fromPagentUi(event)) return;
+        if (fromPagexUi(event)) return;
         const element = targetElement(event);
         if (!element) return;
         const previous = inputTimers.get(element);
@@ -201,7 +201,7 @@ export function createTeachingRecorder(emit: Emit) {
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
-        if (fromPagentUi(event) || !['Enter', 'Tab', 'Escape'].includes(event.key)) return;
+        if (fromPagexUi(event) || !['Enter', 'Tab', 'Escape'].includes(event.key)) return;
         queue('keypress', targetElement(event), { value: event.key });
     };
 

@@ -9,7 +9,7 @@ export function PageContext({
     onClearSelection: () => void;
 }) {
     return (
-        <div className="pagent-context">
+        <div className="pagex-context">
             <div className="flex items-start gap-2 px-2.5 py-2">
         <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-[5px] bg-accent-tint text-accent">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">

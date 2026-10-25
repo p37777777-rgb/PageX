@@ -95,7 +95,7 @@ export default defineBackground(() => {
         try {
             await togglePanel(tab.id);
         } catch (error) {
-            console.warn('Pagent inject failed', error);
+            console.warn('PageX inject failed', error);
         }
     });
 
@@ -106,7 +106,7 @@ export default defineBackground(() => {
             if (!tabId) return;
             await togglePanel(tabId);
         } catch (error) {
-            console.warn('Pagent shortcut failed', error);
+            console.warn('PageX shortcut failed', error);
         }
     });
 });

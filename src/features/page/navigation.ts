@@ -1,14 +1,14 @@
-export const PAGE_NAVIGATION_EVENT = 'pagent:page-navigation';
+export const PAGE_NAVIGATION_EVENT = 'pagex:page-navigation';
 
 type NavigationWindow = Window & {
-    __pagentNavigationEvents?: boolean;
+    __pagexNavigationEvents?: boolean;
     navigation?: EventTarget;
 };
 
 export function installPageNavigationEvents(target: Window = window): void {
     const state = target as NavigationWindow;
-    if (state.__pagentNavigationEvents) return;
-    state.__pagentNavigationEvents = true;
+    if (state.__pagexNavigationEvents) return;
+    state.__pagexNavigationEvents = true;
     const notify = () => target.dispatchEvent(new Event(PAGE_NAVIGATION_EVENT));
     const targetHistory = target.history;
     const pushState = targetHistory.pushState.bind(targetHistory);

@@ -106,7 +106,7 @@ export async function testMemoryConnection(): Promise<{ dimensions: number }> {
     const [embedding] = await embedTexts(
         settings.memory,
         await loadMemorySecret(),
-        ['Pagent memory connection test'],
+        ['PageX memory connection test'],
         'retrieval.query',
     );
     return { dimensions: embedding?.length ?? 0 };

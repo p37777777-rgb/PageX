@@ -252,7 +252,7 @@ export function ConversationArchive() {
             }
             const bundle: ConversationExportBundle = {
                 exportedAt: new Date().toISOString(),
-                source: 'pagent',
+                source: 'pagex',
                 version: 1,
                 conversationCount: conversations.length,
                 conversations,
@@ -345,7 +345,7 @@ export function ConversationArchive() {
                         <p className="px-4 py-16 text-center text-[13px] text-ink-3">正在读取本地会话…</p>
                     ) : groups.length === 0 ? (
                         <p className="px-4 py-16 text-center text-[13px] text-ink-3">
-                            {items.length ? '没有匹配的会话' : '还没有可导出的会话。在网页中与 Pagent 对话后，记录会按站点保存在本地。'}
+                            {items.length ? '没有匹配的会话' : '还没有可导出的会话。在网页中与 PageX 对话后，记录会按站点保存在本地。'}
                         </p>
                     ) : (
                         <div className="max-h-[70vh] overflow-y-auto p-2">

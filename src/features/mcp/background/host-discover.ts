@@ -41,7 +41,7 @@ export async function probeMcpHostPort(
     }
 }
 
-/** 在约定端口范围内并行探测 Pagent MCP Host。 */
+/** 在约定端口范围内并行探测 PageX MCP Host。 */
 export async function discoverMcpHost(options?: {
     fetch?: typeof fetch;
     ports?: number[];

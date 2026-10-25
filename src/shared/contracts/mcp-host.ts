@@ -1,5 +1,5 @@
 export const MCP_HOST_PROTOCOL = 1 as const;
-export const MCP_HOST_SERVICE = 'pagent-host';
+export const MCP_HOST_SERVICE = 'pagex-host';
 export const DEFAULT_MCP_HOST_PORT = 17342;
 /** 从 DEFAULT_MCP_HOST_PORT 起连续预留的端口数量，MCP 与扩展共用。 */
 export const MCP_HOST_PORT_COUNT = 16;

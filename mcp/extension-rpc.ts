@@ -66,7 +66,7 @@ export function createExtensionRpc(): ExtensionRpc {
     const callExtension = (method: McpHostMethod, params?: unknown, timeoutMs = 20_000) => {
         if (!isExtensionConnected()) {
             return Promise.reject(
-                new Error('Pagent 扩展未连接。请确认浏览器已加载 Pagent，并且本 MCP 服务正在运行。'),
+                new Error('PageX 扩展未连接。请确认浏览器已加载 PageX，并且本 MCP 服务正在运行。'),
             );
         }
         const id = randomUUID();

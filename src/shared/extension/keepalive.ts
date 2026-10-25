@@ -1,4 +1,4 @@
-export const KEEPALIVE_PORT = 'pagent-keepalive';
+export const KEEPALIVE_PORT = 'pagex-keepalive';
 export const KEEPALIVE_INTERVAL_MS = 20_000;
 export const BUSY_INTERVAL_MS = 10_000;
 

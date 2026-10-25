@@ -59,7 +59,7 @@ const RAINBOW = accentChain([
 
 const DEMO_TABS: BrowserTab[] = [
     { id: 1, title: "当前页面", url: "https://example.com/app", active: true },
-    { id: 2, title: "GitHub", url: "https://github.com/pagent" },
+    { id: 2, title: "GitHub", url: "https://github.com/pagex" },
     { id: 3, title: "文档", url: "https://docs.example.com" },
 ];
 
@@ -293,7 +293,7 @@ export default function PromptBar({
             return;
         }
         const anchor = composerAnchorRef.current;
-        const frame = anchor?.closest(".pagent-window") ?? anchor?.getRootNode();
+        const frame = anchor?.closest(".pagex-window") ?? anchor?.getRootNode();
         const topEdge =
             frame instanceof Element ? frame.getBoundingClientRect().top : 8;
         if (!anchor) return;
@@ -554,7 +554,7 @@ export default function PromptBar({
                 {menu && (
                     <div
                         onMouseLeave={() => setEngaged(false)}
-                        className="pagent-mention-menu absolute inset-x-0 bottom-full z-30 mb-2 rounded-[10px] bg-surface p-1 shadow-raised"
+                        className="pagex-mention-menu absolute inset-x-0 bottom-full z-30 mb-2 rounded-[10px] bg-surface p-1 shadow-raised"
                         style={{ maxHeight: menuMaxHeight }}
                     >
                         <div className="relative min-h-0 flex-1 overflow-y-auto">
@@ -567,7 +567,7 @@ export default function PromptBar({
                                     height: rowBox?.height ?? 0,
                                     opacity: rowBox && engaged && rows.length > 0 ? 1 : 0,
                                     transition:
-                                        "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease",
+                                        "top 220ms cubic-bezier(0.23,1,0.32,1), height 220ms cubic-bezier(0.23,1,0.32,1), opacity 150ms ease.ts",
                                 }}
                             />
                             {rows.map((row, i) => (

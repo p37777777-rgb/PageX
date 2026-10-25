@@ -212,7 +212,7 @@ export function AgentPanel({
     };
 
     return (
-        <div className="pagent-window relative flex h-[min(680px,calc(100vh-48px))] w-full flex-col self-start">
+        <div className="pagex-window relative flex h-[min(680px,calc(100vh-48px))] w-full flex-col self-start">
             <PanelHeader
                 running={running}
                 workingOnThisPage={workingOnThisPage}

@@ -26,7 +26,7 @@ export function PanelHeader({
             onPointerDown={onHeaderPointerDown}
         >
       <span
-          className={`pagent-led ${workingOnThisPage ? 'is-on' : ''}`}
+          className={`pagex-led ${workingOnThisPage ? 'is-on' : ''}`}
           title={workingOnThisPage ? 'Agent 正在此页面工作' : 'Agent 未在此页面工作'}
           aria-label={workingOnThisPage ? 'Agent 正在此页面工作' : 'Agent 未在此页面工作'}
       />

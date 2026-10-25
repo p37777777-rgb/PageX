@@ -193,7 +193,7 @@ export function createSafetyMiddleware(options: {
     };
 
     const middleware = createMiddleware({
-        name: 'PagentSafety',
+        name: 'PagexSafety',
         wrapModelCall: async (request, handler) => {
             usage.modelCalls += 1;
             options.onBudget?.(usage);

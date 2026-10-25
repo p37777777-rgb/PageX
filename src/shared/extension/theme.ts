@@ -15,6 +15,6 @@ export function applyShadowTheme(anchor: Element | null, themeClass: string) {
     if (!(root instanceof ShadowRoot)) return;
     const dark = themeClass === 'dark';
     root.host.classList.toggle('dark', dark);
-    root.querySelector('[data-pagent-ui]')?.classList.toggle('dark', dark);
-    root.querySelector('[data-pagent-portals]')?.classList.toggle('dark', dark);
+    root.querySelector('[data-pagex-ui]')?.classList.toggle('dark', dark);
+    root.querySelector('[data-pagex-portals]')?.classList.toggle('dark', dark);
 }

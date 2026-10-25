@@ -12,7 +12,7 @@ import {
 } from '../src/shared/contracts/mcp-host.ts';
 import { createExtensionRpc } from './extension-rpc.ts';
 import { listenFirstFree } from './listen.ts';
-import { createPagentMcpServer, SERVER_NAME, SERVER_VERSION } from './server.ts';
+import { createPagexMcpServer, SERVER_NAME, SERVER_VERSION } from './server.ts';
 //前面四个文件拼成一个能跑的服务
 
 function argValue(name: string): string | undefined {
@@ -40,7 +40,7 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 function listenPorts(): number[] {
     const range = mcpHostPorts();
-    const raw = argValue('--port') ?? process.env.PAGENT_MCP_PORT;
+    const raw = argValue('--port') ?? process.env.PAGEX_MCP_PORT;
     if (raw == null) return range;
     const preferred = Number(raw);
     if (!Number.isInteger(preferred) || !range.includes(preferred)) {
@@ -139,7 +139,7 @@ async function handleMcpHttp(req: IncomingMessage, res: ServerResponse, url: URL
         return;
     }
 
-    const server = createPagentMcpServer(callExtension);
+    const server = createPagexMcpServer(callExtension);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     await server.connect(transport);
     try {
@@ -154,7 +154,7 @@ async function handleMcpHttp(req: IncomingMessage, res: ServerResponse, url: URL
 
 async function main() {
     if (process.argv.includes('--help') || process.argv.includes('-h')) {
-        console.error(`Pagent MCP 服务 ${SERVER_VERSION}
+        console.error(`PageX MCP 服务 ${SERVER_VERSION}
 用法: pnpm mcp [--port ${DEFAULT_MCP_HOST_PORT}] [--stdio] [--http-only]
 
 在 127.0.0.1:${mcpHostPortRangeLabel()} 内寻找空闲端口并监听；扩展在同一范围内发现服务。
@@ -183,14 +183,14 @@ async function main() {
     });
 
     boundPort = await listenFirstFree(httpServer, ports);
-    console.error(`Pagent MCP Host 监听 127.0.0.1:${boundPort}（范围 ${mcpHostPortRangeLabel()}），等待扩展连接`);
+    console.error(`PageX MCP Host 监听 127.0.0.1:${boundPort}（范围 ${mcpHostPortRangeLabel()}），等待扩展连接`);
 
     const httpOnly = process.argv.includes('--http-only');
     const forceStdio = process.argv.includes('--stdio');
     const useStdio = !httpOnly && (forceStdio || !process.stdin.isTTY);
-    let stdioServer: ReturnType<typeof createPagentMcpServer> | undefined;
+    let stdioServer: ReturnType<typeof createPagexMcpServer> | undefined;
     if (useStdio) {
-        stdioServer = createPagentMcpServer(rpc.callExtension);
+        stdioServer = createPagexMcpServer(rpc.callExtension);
         await stdioServer.connect(new StdioServerTransport());
         console.error('已启用 MCP stdio');
     } else {

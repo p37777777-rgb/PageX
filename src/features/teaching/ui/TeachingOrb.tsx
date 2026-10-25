@@ -37,9 +37,9 @@ export function TeachingOrb({
     }, []);
 
     return (
-        <div ref={orbRef} className={`pagent-teaching-orb-wrap ${summarizing ? 'is-summarizing' : ''}`}>
+        <div ref={orbRef} className={`pagex-teaching-orb-wrap ${summarizing ? 'is-summarizing' : ''}`}>
             {menuOpen && !summarizing && (
-                <div className="pagent-teaching-menu" role="dialog" aria-label="示教控制">
+                <div className="pagex-teaching-menu" role="dialog" aria-label="示教控制">
                     <div>
                         <strong>正在示教</strong>
                         <span>操作会持续记录</span>
@@ -51,17 +51,17 @@ export function TeachingOrb({
             )}
             <button
                 type="button"
-                className="pagent-teaching-orb"
+                className="pagex-teaching-orb"
                 aria-label={summarizing ? '正在总结示教流程' : '打开示教控制'}
                 aria-expanded={menuOpen}
                 onClick={() => {
                     if (!summarizing) setMenuOpen((open) => !open);
                 }}
             >
-                <span className="pagent-teaching-pulse" aria-hidden />
-                <span className="pagent-teaching-face" aria-hidden>
-          <span className="pagent-teaching-eye" />
-          <span className="pagent-teaching-eye" />
+                <span className="pagex-teaching-pulse" aria-hidden />
+                <span className="pagex-teaching-face" aria-hidden>
+          <span className="pagex-teaching-eye" />
+          <span className="pagex-teaching-eye" />
         </span>
             </button>
         </div>
