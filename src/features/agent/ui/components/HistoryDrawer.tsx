@@ -37,14 +37,14 @@ export function HistoryDrawer({
     const groups = groupConversationsByTime(conversations);
 
     return (
-        <div className={`pagent-history-layer absolute inset-0 z-40 ${shown ? 'is-open' : ''}`}>
+        <div className={`pagex-history-layer absolute inset-0 z-40 ${shown ? 'is-open' : ''}`}>
             <button
                 type="button"
-                className={`pagent-history-backdrop ${shown ? 'is-open' : ''}`}
+                className={`pagex-history-backdrop ${shown ? 'is-open' : ''}`}
                 aria-label="关闭历史"
                 onClick={onClose}
             />
-            <aside className={`pagent-history-drawer flex flex-col border-r border-line bg-page ${shown ? 'is-open' : ''}`}>
+            <aside className={`pagex-history-drawer flex flex-col border-r border-line bg-page ${shown ? 'is-open' : ''}`}>
                 <div className="flex h-10 shrink-0 items-center justify-between border-b border-line px-3">
                     <span className="text-[13px] font-medium text-ink">历史会话</span>
                     <button

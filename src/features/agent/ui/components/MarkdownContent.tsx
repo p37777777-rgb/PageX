@@ -11,7 +11,7 @@ export function MarkdownContent({
     return (
         <div
             className={cn(
-                'pagent-md',
+                'pagex-md',
                 streaming && 'is-streaming',
             )}
             dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}

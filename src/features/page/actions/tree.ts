@@ -10,7 +10,7 @@ type TreeLabel = {
     value: string;
 };
 
-const ELEMENT_TREE_SKIP = 'script,style,noscript,pagent-root,[data-pagent-ui]';
+const ELEMENT_TREE_SKIP = 'script,style,noscript,pagex-root,[data-pagex-ui]';
 const ELEMENT_TREE_ATOMIC = 'svg,canvas,video,audio,iframe';
 
 export function inspectElementTree(

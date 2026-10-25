@@ -11,7 +11,7 @@ import type { TaskRow } from '@/shared/contracts/session';
 import { pageObserver } from '@/features/page/observer';
 import { uiEvents } from '@/features/page/ui-events';
 import {
-    notePagentInteraction,
+    notePagexInteraction,
 } from '@/features/page/selection';
 import {
     clampFabPosition,
@@ -402,7 +402,7 @@ export function AgentApp({
             <div className="pointer-events-none fixed inset-0">
                 <div
                     ref={panelRef}
-                    className={`pagent-morph-shell pointer-events-auto absolute select-text ${
+                    className={`pagex-morph-shell pointer-events-auto absolute select-text ${
                         open ? 'is-open' : ''
                     } ${manipulating ? 'is-manipulating' : ''} ${celebrating ? 'is-celebrating' : ''}`}
                     style={{
@@ -415,7 +415,7 @@ export function AgentApp({
                         transition: panelHidden ? 'none' : undefined,
                     }}
                     onPointerDown={(event) => {
-                        notePagentInteraction();
+                        notePagexInteraction();
                         stopPanelEvent(event);
                     }}
                     onPointerMove={stopPanelEvent}
@@ -433,13 +433,13 @@ export function AgentApp({
                     onWheel={stopPanelEvent}
                 >
                     <div
-                        className="pagent-panel-stage"
+                        className="pagex-panel-stage"
                         aria-hidden={!open}
                         inert={!open}
                     >
                         <div
                             data-panel-resize="left"
-                            className="pagent-resize pagent-resize-left"
+                            className="pagex-resize pagex-resize-left"
                             role="separator"
                             aria-orientation="vertical"
                             aria-label="向左调整面板宽度"
@@ -447,7 +447,7 @@ export function AgentApp({
                         />
                         <div
                             data-panel-resize="right"
-                            className="pagent-resize pagent-resize-right"
+                            className="pagex-resize pagex-resize-right"
                             role="separator"
                             aria-orientation="vertical"
                             aria-label="向右调整面板宽度"
@@ -504,7 +504,7 @@ export function AgentApp({
                     <button
                         ref={fabRef}
                         type="button"
-                        className={`pagent-fab ${
+                        className={`pagex-fab ${
                             session.agentActive ? 'is-working' : ''
                         } ${!session.agentActive ? 'is-idle' : ''} ${celebrating ? 'is-celebrating' : ''}`}
                         onPointerDown={onFabPointerDown}
@@ -517,12 +517,12 @@ export function AgentApp({
                         }}
                         tabIndex={open ? -1 : 0}
                         aria-hidden={open}
-                        aria-label={session.agentActive ? '打开 Pagent，Agent Active' : '打开 Pagent'}
+                        aria-label={session.agentActive ? '打开 PageX，Agent Active' : '打开 PageX'}
                     >
                         {session.agentActive ? (
                             <>
-                                <span className="pagent-fab-halo" aria-hidden />
-                                <span className="pagent-fab-pulse" aria-hidden />
+                                <span className="pagex-fab-halo" aria-hidden />
+                                <span className="pagex-fab-pulse" aria-hidden />
                             </>
                         ) : null}
                         <BotIcon animated size={56} aria-hidden />

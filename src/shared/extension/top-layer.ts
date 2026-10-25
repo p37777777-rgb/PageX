@@ -1,4 +1,4 @@
-import { PAGENT_Z_INDEX } from './panel-position';
+import { PAGEX_Z_INDEX } from './panel-position';
 //让扩展面板留在页面最上层。页面后插入的节点盖住它时，再把它抬回去
 type PopoverHost = HTMLElement & {
     showPopover?: () => void;
@@ -25,7 +25,7 @@ const HOST_STYLE: Partial<CSSStyleDeclaration> = {
 
 export function applyTopLayerHostStyles(host: HTMLElement) {
     Object.assign(host.style, HOST_STYLE);
-    host.style.setProperty('z-index', String(PAGENT_Z_INDEX), 'important');
+    host.style.setProperty('z-index', String(PAGEX_Z_INDEX), 'important');
 }
 
 export function topLayerParent(): Element {

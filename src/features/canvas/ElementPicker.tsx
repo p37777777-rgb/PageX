@@ -62,7 +62,7 @@ export function ElementPicker({
         overlay.style.pointerEvents = 'none';
         const element = document.elementFromPoint(x, y);
         overlay.style.pointerEvents = 'auto';
-        if (!element || element.closest('pagent-root')) return null;
+        if (!element || element.closest('pagex-root')) return null;
         return element;
     };
 

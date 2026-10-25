@@ -102,11 +102,14 @@ Desktop.ini
 !/README.md
 git-upload-commands.md
 
+# Local-only documents (study QA pages etc.): any root-level HTML is local.
+/*.html
+
 # Agent workspace data (not part of the extension)
 .workbuddy/
 
 # Template and legacy graphics the running extension does not import.
 public/wxt.svg
 src/assets/react.svg
-public/pagent-bot.svg
-src/assets/pagent-bot.svg
+public/pagex-bot.svg
+src/assets/pagex-bot.svg

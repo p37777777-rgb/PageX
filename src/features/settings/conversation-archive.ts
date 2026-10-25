@@ -56,7 +56,7 @@ export type ExportedConversation = {
 
 export type ConversationExportBundle = {
     exportedAt: string;
-    source: 'pagent';
+    source: 'pagex';
     version: 1;
     conversationCount: number;
     conversations: ExportedConversation[];
@@ -206,6 +206,19 @@ function fence(value: string): string {
     return `\`\`\`\n${value.replace(/```/g, '\\`\\`\\`')}\n\`\`\``;
 }
 
+export function buildExportBundle(
+    items: PageConversation[],
+    options: ConversationExportOptions = {},
+): ConversationExportBundle {
+    return {
+        exportedAt: new Date().toISOString(),
+        source: 'pagex',
+        version: 1,
+        conversationCount: items.length,
+        conversations: items.map((item) => toExportedConversation(item, options)),
+    };
+}
+
 export function exportedConversationToMarkdown(exported: ExportedConversation): string {
     const lines = [
         `# ${exported.title || '未命名会话'}`,
@@ -273,14 +286,21 @@ export function exportedConversationToMarkdown(exported: ExportedConversation): 
     return `${lines.join('\n').trim()}\n`;
 }
 
+export function conversationToMarkdown(item: PageConversation, options: ConversationExportOptions = {}): string {
+    return exportedConversationToMarkdown(toExportedConversation(item, options));
+}
 
-
+export function conversationsToMarkdown(items: PageConversation[], options: ConversationExportOptions = {}): string {
+    return items.map((item) => conversationToMarkdown(item, options)).join('\n---\n\n');
+}
 
 export function exportedConversationsToMarkdown(items: ExportedConversation[]): string {
     return items.map(exportedConversationToMarkdown).join('\n---\n\n');
 }
 
-
+export function conversationsToJsonl(items: PageConversation[], options: ConversationExportOptions = {}): string {
+    return `${items.map((item) => JSON.stringify(toExportedConversation(item, options))).join('\n')}\n`;
+}
 
 export function downloadTextFile(filename: string, content: string, mime: string): void {
     const blob = new Blob([content], { type: `${mime};charset=utf-8` });
@@ -301,5 +321,5 @@ export function exportFilename(kind: 'json' | 'jsonl' | 'md', now = new Date()):
         String(now.getHours()).padStart(2, '0'),
         String(now.getMinutes()).padStart(2, '0'),
     ].join('');
-    return `pagent-conversations-${stamp}.${kind}`;
+    return `pagex-conversations-${stamp}.${kind}`;
 }

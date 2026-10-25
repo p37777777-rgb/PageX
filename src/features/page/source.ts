@@ -104,7 +104,7 @@ export async function getPageSource(
 
 export function serializeLiveDom(root: Document = document): string {
     const clone = root.documentElement.cloneNode(true) as HTMLElement;
-    for (const node of Array.from(clone.querySelectorAll('pagent-root, [data-pagent-ui]'))) {
+    for (const node of Array.from(clone.querySelectorAll('pagex-root, [data-pagex-ui]'))) {
         node.remove();
     }
     for (const node of Array.from(clone.querySelectorAll('script, style, svg'))) {
@@ -354,7 +354,7 @@ function collectLinks(root: Document): SourceLink[] {
 
 function collectScripts(root: Document): SourceAsset[] {
     return Array.from(root.querySelectorAll('script'))
-        .filter((el) => !el.closest('pagent-root, [data-pagent-ui]'))
+        .filter((el) => !el.closest('pagex-root, [data-pagex-ui]'))
         .map((el) => {
             const script = el as HTMLScriptElement;
             const src = script.src || script.getAttribute('src') || '';
@@ -381,7 +381,7 @@ function collectStylesheets(root: Document): SourceAsset[] {
             };
         });
     const styles = Array.from(root.querySelectorAll('style'))
-        .filter((el) => !el.closest('pagent-root, [data-pagent-ui]'))
+        .filter((el) => !el.closest('pagex-root, [data-pagex-ui]'))
         .map((el) => {
             const text = el.textContent?.trim() ?? '';
             return {

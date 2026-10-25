@@ -82,7 +82,7 @@ const marked = new Marked({
             return `<img src="${escapeAttr(url)}" alt="${escapeAttr(text)}"${titleAttr} />`;
         },
         table(token) {
-            return `<div class="pagent-md-table">${defaultRenderer.table.call(this, token)}</div>`;
+            return `<div class="pagex-md-table">${defaultRenderer.table.call(this, token)}</div>`;
         },
     },
 });

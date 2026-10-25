@@ -54,11 +54,11 @@ export function OptionsApp() {
         <div className="min-h-screen bg-canvas text-ink">
             <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
                 <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-          <span className="pagent-settings-logo" aria-hidden>
+          <span className="pagex-settings-logo" aria-hidden>
             <BotIcon size={34} />
           </span>
                     <div className="min-w-0">
-                        <h1 className="text-[15px] font-semibold tracking-[-0.01em]">Pagent 设置</h1>
+                        <h1 className="text-[15px] font-semibold tracking-[-0.01em]">PageX 设置</h1>
                         <p className="truncate text-[11.5px] text-ink-3">模型、权限与本地聊天记录</p>
                     </div>
                 </div>

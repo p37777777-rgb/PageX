@@ -12,7 +12,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
   }),
   manifest: {
-    name: 'Pagent',
+    name: 'PageX',
     description: 'PageX正在操纵当前页面',
     permissions: [
       'storage',
@@ -24,9 +24,9 @@ export default defineConfig({
     optional_permissions: ['tabs', 'downloads'],
     host_permissions: ['<all_urls>'],
     commands: {
-      'toggle-pagent': {
+      'toggle-pagex': {
         suggested_key: { default: 'Alt+P' },
-        description: '显示或隐藏 Pagent',
+        description: '显示或隐藏 PageX',
       },
     },
   },

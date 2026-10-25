@@ -15,7 +15,7 @@ export interface BotIconProps extends ComponentPropsWithoutRef<'svg'> {
 }
 
 /**
- * Pagent Bot 圆形机器人矢量图标组件
+ * PageX Bot 圆形机器人矢量图标组件
  * 采用高保真 SVG 分层图元设计，支持自适应缩放、表情形态切换与后续 SVG 动画扩展。
  */
 export function BotIcon({
@@ -28,16 +28,16 @@ export function BotIcon({
                         }: BotIconProps) {
     const id = useId().replace(/:/g, '');
 
-    const clipId = `pagent-bot-clip-${id}`;
-    const baseGradId = `pagent-bot-base-${id}`;
-    const cyanHighlightId = `pagent-bot-cyan-${id}`;
-    const magentaHighlightId = `pagent-bot-magenta-${id}`;
-    const glossRadialId = `pagent-bot-gloss-rad-${id}`;
-    const glossLinearId = `pagent-bot-gloss-lin-${id}`;
-    const bottomShadowId = `pagent-bot-bottom-shadow-${id}`;
-    const eyeShadowId = `pagent-bot-eye-shadow-${id}`;
+    const clipId = `pagex-bot-clip-${id}`;
+    const baseGradId = `pagex-bot-base-${id}`;
+    const cyanHighlightId = `pagex-bot-cyan-${id}`;
+    const magentaHighlightId = `pagex-bot-magenta-${id}`;
+    const glossRadialId = `pagex-bot-gloss-rad-${id}`;
+    const glossLinearId = `pagex-bot-gloss-lin-${id}`;
+    const bottomShadowId = `pagex-bot-bottom-shadow-${id}`;
+    const eyeShadowId = `pagex-bot-eye-shadow-${id}`;
 
-    const eyeClass = animated ? 'pagent-fab-eye' : undefined;
+    const eyeClass = animated ? 'pagex-fab-eye' : undefined;
 
     const renderEyes = () => {
         switch (expression) {
@@ -179,8 +179,8 @@ export function BotIcon({
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             role="img"
-            aria-label="Pagent Bot"
-            className={`pagent-bot-svg ${className ?? ''}`}
+            aria-label="PageX Bot"
+            className={`pagex-bot-svg ${className ?? ''}`}
             style={{ color: 'oklch(0.985 0.006 250)', ...restProps.style }}
             {...restProps}
         >
@@ -298,12 +298,12 @@ export function BotIcon({
             {/* 2. 眼睛容器层 (支持视线注视移动与绕球公转动效) */}
             <g
                 data-part="eyes-container"
-                className={animated ? 'pagent-fab-eyes' : undefined}
+                className={animated ? 'pagex-fab-eyes' : undefined}
                 filter={`url(#${eyeShadowId})`}
             >
                 <g
                     data-part="eyes-orbit"
-                    className={animated ? 'pagent-fab-eyes-orbit' : undefined}
+                    className={animated ? 'pagex-fab-eyes-orbit' : undefined}
                 >
                     {renderEyes()}
                 </g>

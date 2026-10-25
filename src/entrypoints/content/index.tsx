@@ -17,12 +17,12 @@ import { pageChangeTracker } from '@/features/page/change-tracker';
 
 let currentPageHidden = false;
 
-const INSTALLED_FLAG = '__pagentContentInstalled';
+const INSTALLED_FLAG = '__pagexContentInstalled';
 
 function alreadyInstalled(): boolean {
     const scope = window as unknown as Record<string, unknown>;
     if (scope[INSTALLED_FLAG]) return true;
-    if (document.querySelector('pagent-root')) return true;
+    if (document.querySelector('pagex-root')) return true;
     scope[INSTALLED_FLAG] = true;
     return false;
 }
@@ -89,13 +89,13 @@ function ContentShell() {
             areaName: string,
         ) => {
             if (areaName !== 'local') return;
-            const change = changes['pagent:permanently-hidden'];
+            const change = changes['pagex:permanently-hidden'];
             if (!change) return;
             const hidden = change.newValue === true;
             setPermanentlyHidden(hidden);
             setVisible(!hidden && !currentPageHidden);
         };
-        const shadowRoot = document.querySelector('pagent-root')?.shadowRoot;
+        const shadowRoot = document.querySelector('pagex-root')?.shadowRoot;
         uiEvents.addEventListener('toggle', onToggle);
         uiEvents.addEventListener('open', onOpen);
         uiEvents.addEventListener('collapse', onCollapse);
@@ -183,7 +183,7 @@ export default defineContentScript({
         pageChangeTracker.install();
 
         const ui = await createShadowRootUi(ctx, {
-            name: 'pagent-root',
+            name: 'pagex-root',
             position: 'overlay',
             alignment: 'top-left',
             zIndex: 2147483647,
@@ -195,7 +195,7 @@ export default defineContentScript({
                     background: 'transparent',
                 });
                 const app = document.createElement('div');
-                app.dataset.pagentUi = 'true';
+                app.dataset.pagexUi = 'true';
                 Object.assign(app.style, {
                     pointerEvents: 'none',
                     background: 'transparent',

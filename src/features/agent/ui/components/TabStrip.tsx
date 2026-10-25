@@ -42,7 +42,7 @@ export function TabStrip({
                 ref={stripRef}
                 role="tablist"
                 aria-label="会话标签页"
-                className="pagent-tab-strip flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
+                className="pagex-tab-strip flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto py-1"
             >
                 {conversations.map((item) => {
                     const active = item.id === activeId;

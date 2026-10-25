@@ -127,7 +127,7 @@ async function connectServer(
         }
     }
 
-    const client = new Client({ name: `pagent-${sanitizeName(name)}`, version: '0.1.0' });
+    const client = new Client({ name: `pagex-${sanitizeName(name)}`, version: '0.1.0' });
     servers.set(name, { name, url: config.url, client, status: 'connecting', tools: [] });
     try {
         await client.connect(createTransport(config));

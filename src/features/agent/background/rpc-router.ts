@@ -83,8 +83,8 @@ import {
 } from '@/features/memory/service';
 //后台唯一的命令入口。按已有 RPC 名字把请求分给页面、标签页、截图、设置、密钥、会话和 Agent。
 //这一步还没有的记忆、示教和 MCP，先返回尚未接入。校验失败和未知命令都返回明确错误。
-const PERMANENTLY_HIDDEN_KEY = 'pagent:permanently-hidden';
-const CURRENT_PAGE_HIDDEN_PREFIX = 'pagent:current-page-hidden:';
+const PERMANENTLY_HIDDEN_KEY = 'pagex:permanently-hidden';
+const CURRENT_PAGE_HIDDEN_PREFIX = 'pagex:current-page-hidden:';
 
 function currentPageHiddenKey(tabId: number) {
     return `${CURRENT_PAGE_HIDDEN_PREFIX}${tabId}`;

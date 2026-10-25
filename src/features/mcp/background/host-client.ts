@@ -98,7 +98,7 @@ async function runSession(
     onConnected: (port: number) => void,
 ): Promise<void> {
     const port = await discoverMcpHost({ signal, preferPort });
-    if (port == null) throw new Error('未在端口范围内发现 Pagent MCP Host');
+    if (port == null) throw new Error('未在端口范围内发现 PageX MCP Host');
     const host: LiveHost = { port, base: hostBase(port) };
     await hello(host, signal);
     onConnected(port);
@@ -131,7 +131,7 @@ export function startMcpHostClient(): () => void {
                 });
             } catch (error) {
                 if (abort.signal.aborted) return;
-                if (connected) console.warn('Pagent MCP Host 已断开', error);
+                if (connected) console.warn('PageX MCP Host 已断开', error);
                 connected = false;
                 await new Promise((resolve) => setTimeout(resolve, backoff));
                 backoff = Math.min(backoff * 2, MAX_BACKOFF_MS);

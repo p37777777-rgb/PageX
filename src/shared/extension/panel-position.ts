@@ -1,4 +1,4 @@
-export const PAGENT_Z_INDEX = 2147483647;
+export const PAGEX_Z_INDEX = 2147483647;
 export const DEFAULT_PANEL_WIDTH = 400;
 export const MIN_PANEL_WIDTH = 320;
 export const MAX_PANEL_WIDTH = 720;

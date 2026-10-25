@@ -31,7 +31,7 @@ async function runTool(work: () => Promise<unknown>) {
     }
 }
 
-export function createPagentMcpServer(callExtension: CallExtension): McpServer {
+export function createPagexMcpServer(callExtension: CallExtension): McpServer {
     const server = new McpServer(
         { name: SERVER_NAME, version: SERVER_VERSION },
         {

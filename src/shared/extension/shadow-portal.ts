@@ -4,14 +4,14 @@ export function resolveShadowPortal(anchor?: Element | null): HTMLElement | unde
     const root = anchor?.getRootNode();
     if (!(root instanceof ShadowRoot)) return undefined;
 
-    const existing = root.querySelector<HTMLElement>('[data-pagent-portals]');
+    const existing = root.querySelector<HTMLElement>('[data-pagex-portals]');
     if (existing) {
         existing.classList.toggle('dark', root.host.classList.contains('dark'));
         return existing;
     }
 
     const host = document.createElement('div');
-    host.dataset.pagentPortals = 'true';
+    host.dataset.pagexPortals = 'true';
     host.classList.toggle('dark', root.host.classList.contains('dark'));
     host.style.position = 'fixed';
     host.style.inset = 'auto';
