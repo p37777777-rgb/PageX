@@ -269,7 +269,7 @@ export default function ToolChips({
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </span>
-                                        <span className="shrink-0 text-[12.5px] font-medium text-ink">{row.label}</span>
+                                        <span className="min-w-0 shrink truncate text-[12.5px] font-medium text-ink">{row.label}</span>
                                         <span
                                             className={`inline-flex h-5.5 min-w-0 flex-1 cursor-pointer items-center truncate rounded-chip bg-field px-1.5
                     text-[11.5px] text-ink-2 shadow-hairline transition-colors duration-100 hover:bg-hover-2

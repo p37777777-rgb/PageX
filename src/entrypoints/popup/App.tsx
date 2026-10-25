@@ -4,7 +4,6 @@ import { applyDocumentTheme, resolveThemeClass } from '@/shared/extension/theme'
 import type { AgentSettings } from '@/shared/contracts/settings';
 import { Button } from '@/shared/ui/beui/button';
 import { Switch } from '@/shared/ui/beui/switch';
-import { BotIcon } from '@/shared/ui/BotIcon';
 
 export function PopupApp() {
     const [settings, setSettings] = useState<AgentSettings>();
@@ -49,20 +48,20 @@ export function PopupApp() {
     return (
         <main className="w-89 bg-surface text-ink">
             <section>
-                <header className="flex items-center gap-3 border-b border-line px-4 py-3.5">
-          <span className="pagex-settings-logo" aria-hidden>
-            <BotIcon size={34} />
-          </span>
+                <div className="h-1 w-full bg-[linear-gradient(90deg,#ff00f0_0_33.33%,#fffa00_33.33%_66.66%,#00ffa2_66.66%)]" aria-hidden />
+                <header className="pagex-industrial-header flex items-center gap-3 px-4 py-3.5">
+          <span className="pagex-brand" aria-hidden>PX</span>
                     <div className="min-w-0 flex-1">
-                        <h1 className="text-[14px] font-semibold tracking-[-0.01em]">PageX</h1>
-                        <p className="truncate text-[11px] text-ink-3">
+                        <div className="pagex-eyebrow text-white/65">PAGEX / QUICK ACCESS</div>
+                        <h1 className="text-[16px] font-bold tracking-[0.02em]">页面 Agent</h1>
+                        <p className="truncate text-[11px] text-white/65">
                             {settings ? `${settings.model.provider} · ${settings.model.model}` : '页面内智能 Agent'}
                         </p>
                     </div>
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2.5 text-[11.5px] text-ink-2"
+                        className="pagex-cut-button h-8 min-h-0 px-2.5 text-[11.5px]"
                         onClick={() => void browser.runtime.openOptionsPage()}
                     >
                         设置

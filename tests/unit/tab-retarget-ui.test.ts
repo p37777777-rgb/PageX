@@ -6,6 +6,10 @@ import { dispatchUiCommand, uiEvents } from '@/features/page/ui-events';
 import { retargetAgent, running } from '@/features/agent/background/agent-controller';
 import { tabStores } from '@/features/agent/background/tab-store';
 import { useAgentEventConsumer } from '@/features/agent/ui/hooks/useAgentEventConsumer';
+import {
+    useAgentSessionStore,
+    resetAgentSessionStore,
+} from '@/features/agent/ui/store/agent-session-store';
 import * as contentBridge from '@/features/agent/background/content-bridge';
 import * as storage from '@/shared/storage/storage';
 import { CHANNEL } from '@/shared/contracts/channel';
@@ -14,9 +18,10 @@ import { CHANNEL } from '@/shared/contracts/channel';
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 describe('tab retarget ui collapse and expand', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
+    beforeEach(() => {
+        vi.restoreAllMocks();
+        resetAgentSessionStore();
+    });
 
   it('handleContentCommand handles ui.collapse', () => {
     const result = handleContentCommand('ui.collapse', {});
@@ -122,30 +127,10 @@ describe('tab retarget ui collapse and expand', () => {
     }) as unknown as typeof browser.runtime.onMessage.addListener;
     browser.runtime.onMessage.removeListener = vi.fn() as unknown as typeof browser.runtime.onMessage.removeListener;
 
-    const runningIdRef = { current: 'c1' as string | null };
-    const revisionRef = { current: 1 };
-    const sessionIdRef = { current: 's1' as string | undefined };
-    const conversationsRef = { current: [] };
-    const setConversations = vi.fn();
-    const setActiveId = vi.fn();
-    const setRevision = vi.fn();
-    const setSessionId = vi.fn();
-    const setWorkingOnThisPage = vi.fn();
-    const setAgentActive = vi.fn();
+    useAgentSessionStore.setState({ runningId: 'c1', revision: 1, sessionId: 's1', conversations: [] });
 
     function ConsumerWrapper() {
-      useAgentEventConsumer({
-        runningIdRef,
-        revisionRef,
-        sessionIdRef,
-        conversationsRef,
-        setConversations,
-        setActiveId,
-        setRevision,
-        setSessionId,
-        setWorkingOnThisPage,
-        setAgentActive,
-      });
+      useAgentEventConsumer();
       return null;
     }
 
@@ -167,9 +152,10 @@ describe('tab retarget ui collapse and expand', () => {
       });
     });
 
-    expect(runningIdRef.current).toBe(null);
-    expect(setWorkingOnThisPage).toHaveBeenCalledWith(false);
-    expect(setAgentActive).toHaveBeenCalledWith(true);
+    const state = useAgentSessionStore.getState();
+    expect(state.runningId).toBe(null);
+    expect(state.workingOnThisPage).toBe(false);
+    expect(state.agentActive).toBe(true);
 
     await act(async () => {
       root.unmount();

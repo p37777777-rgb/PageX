@@ -4,13 +4,6 @@ import { useId, type ReactNode } from 'react';
 import { motion, MotionConfig, useReducedMotion } from 'motion/react';
 import { cn } from '@/shared/utils/utils';
 
-const THUMB_SPRING = {
-    type: 'spring',
-    stiffness: 800,
-    damping: 80,
-    mass: 4,
-} as const;
-
 export interface SwitchProps {
     checked: boolean;
     onCheckedChange: (checked: boolean) => void;
@@ -32,7 +25,7 @@ export function Switch({
     const reduce = useReducedMotion();
 
     return (
-        <MotionConfig transition={reduce ? { duration: 0 } : THUMB_SPRING}>
+        <MotionConfig transition={reduce ? { duration: 0 } : { duration: 0.16 }}>
       <span className={cn('inline-flex items-center gap-3', className)}>
         <motion.button
             id={id}
@@ -43,18 +36,17 @@ export function Switch({
             disabled={disabled}
             onClick={() => onCheckedChange(!checked)}
             initial={false}
-            whileTap={reduce || disabled ? undefined : { scale: 0.94 }}
             className={cn(
-                'inline-flex h-6 w-10 shrink-0 cursor-pointer items-center justify-start rounded-full px-1 outline-none transition-colors',
+                'inline-flex h-5 w-9 shrink-0 cursor-pointer items-center justify-start bg-inset px-0.5 outline-none transition-colors',
                 'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 'disabled:cursor-not-allowed disabled:opacity-60',
-                checked ? 'bg-primary' : 'bg-muted-foreground/45',
+                checked ? 'bg-accent' : 'bg-inset',
             )}
         >
           <motion.span
               initial={false}
-              animate={{ x: checked ? 17 : 0 }}
-              className="block size-4 rounded-full bg-knob shadow-sm"
+              animate={{ x: checked ? 16 : 0 }}
+              className="block size-4 bg-ink"
           />
         </motion.button>
           {label && (

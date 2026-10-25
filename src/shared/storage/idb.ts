@@ -129,3 +129,62 @@ export async function resetSessionDbForTests(): Promise<void> {
         request.onblocked = () => resolve();
     });
 }
+
+// ---------- pagent -> PageX 一次性迁移 ----------
+// PageX 由 pagent 重写而来，IndexedDB 库名从 'pagent' 改为 'PageX'。
+// 这里把旧库中 conversations / vaults / memories 等数据导入新库：
+// - 只在新库对应 store 为空时导入，绝不覆盖 PageX 已产生的新数据；
+// - meta 不迁移（chrome-migrated / session-scope 等标志由 PageX 自己维护）；
+// - 旧库保留不删，方便回退到 pagent。
+const LEGACY_DB_NAME = 'pagent';
+export const LEGACY_DB_MIGRATED_FLAG = 'legacy-pagent-migrated';
+
+async function openLegacyDb(): Promise<IDBDatabase | null> {
+    return new Promise((resolve, reject) => {
+        // 不带版本号打开；若旧库不存在，upgradeneeded 会尝试创建，立即中止以回滚创建
+        const request = indexedDB.open(LEGACY_DB_NAME);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error ?? new Error('无法打开旧版数据库'));
+        request.onupgradeneeded = () => {
+            request.transaction?.abort();
+        };
+    });
+}
+
+export async function migrateLegacyPagentDbIfNeeded(): Promise<void> {
+    if (typeof indexedDB === 'undefined') return;
+    if (await idbGet<boolean>(SESSION_STORES.meta, LEGACY_DB_MIGRATED_FLAG)) return;
+    let migrated = false;
+    try {
+        const legacy = await openLegacyDb();
+        if (legacy) {
+            try {
+                for (const name of Object.values(SESSION_STORES)) {
+                    if (name === SESSION_STORES.meta) continue;
+                    if (!legacy.objectStoreNames.contains(name)) continue;
+                    const existing = await idbGetAll(name);
+                    if (Object.keys(existing).length) continue;
+                    const tx = legacy.transaction(name, 'readonly');
+                    const [keys, values] = await Promise.all([
+                        requestToPromise(tx.objectStore(name).getAllKeys()),
+                        requestToPromise(tx.objectStore(name).getAll()),
+                    ]);
+                    await complete(tx);
+                    if (!keys.length) continue;
+                    const incoming: Record<string, unknown> = {};
+                    keys.forEach((key, index) => {
+                        incoming[String(key)] = values[index];
+                    });
+                    await idbReplaceAll(name, incoming);
+                    migrated = true;
+                }
+            } finally {
+                legacy.close();
+            }
+        }
+    } catch {
+        // 旧库不存在或读取失败：不重试、不抛错，迁移流程静默结束
+    }
+    void migrated;
+    await idbSet(SESSION_STORES.meta, LEGACY_DB_MIGRATED_FLAG, true);
+}

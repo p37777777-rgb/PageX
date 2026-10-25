@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { clampToViewport } from '@/shared/ui/menu-bounds';
 //从后台读取示教状态，并把页面上新录到的动作追加回去。取消和结束都走已有的示教 RPC。
 type PickerBox = {
     left: number;
@@ -135,17 +136,21 @@ export function TeachingCommentPicker({
     // Compute position for the textarea
     let inputLeft = window.innerWidth / 2 - 160;
     let inputTop = 80;
+    const inputWidth = Math.min(320, Math.max(220, window.innerWidth - 32));
 
     if (box && !isDirectMode) {
         const spaceBelow = window.innerHeight - (box.top + box.height);
         const spaceAbove = box.top;
-        inputLeft = Math.min(Math.max(16, box.left), window.innerWidth - 340);
+        inputLeft = box.left;
         if (spaceBelow >= 120 || spaceBelow >= spaceAbove) {
-            inputTop = Math.min(window.innerHeight - 110, box.top + box.height + 8);
+            inputTop = box.top + box.height + 8;
         } else {
-            inputTop = Math.max(16, box.top - 100);
+            inputTop = box.top - 108;
         }
     }
+    const clamped = clampToViewport(inputLeft, inputTop, inputWidth, 96);
+    inputLeft = clamped.left;
+    inputTop = clamped.top;
 
     return (
         <div
@@ -187,21 +192,20 @@ export function TeachingCommentPicker({
         >
             {box && (
                 <div
-                    className="pointer-events-none fixed rounded-[3px] border-2 border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(255,255,255,0.55),0_4px_18px_rgba(0,0,0,0.18)]"
+                    className="pointer-events-none fixed border-2 border-ink bg-accent/25"
                     style={{
                         left: box.left,
                         top: box.top,
                         width: box.width,
                         height: box.height,
-                        transition: isInputPhase
-                            ? 'none'
-                            : 'left 160ms cubic-bezier(0.23,1,0.32,1), top 160ms cubic-bezier(0.23,1,0.32,1), width 160ms cubic-bezier(0.23,1,0.32,1), height 160ms cubic-bezier(0.23,1,0.32,1)',
                     }}
                 >
           <span
-              className="absolute left-0 max-w-72 truncate rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground shadow-card"
+              className="fixed max-w-72 truncate bg-accent px-2 py-1 text-[11px] font-medium text-ink"
               style={{
-                  top: box.top >= 30 ? -28 : Math.min(box.height + 4, window.innerHeight - box.top - 24),
+                  left: Math.max(8, Math.min(box.left, window.innerWidth - Math.min(288, window.innerWidth - 16) - 8)),
+                  top: box.top >= 30 ? Math.max(8, box.top - 26) : Math.min(window.innerHeight - 28, box.top + box.height + 4),
+                  maxWidth: Math.min(288, window.innerWidth - 16),
               }}
           >
             {label}
@@ -210,7 +214,7 @@ export function TeachingCommentPicker({
             )}
 
             {!isInputPhase && (
-                <div className="pointer-events-none fixed top-4 left-1/2 -translate-x-1/2 rounded-full border border-line bg-surface/95 px-3 py-1.5 text-[11.5px] text-ink-2 shadow-raised backdrop-blur">
+                <div className="pointer-events-none fixed top-4 left-1/2 max-w-[calc(100vw-32px)] -translate-x-1/2 border border-ink bg-surface px-3 py-1.5 text-[11.5px] text-ink">
                     单击选择元素以添加备注 · Esc 取消
                 </div>
             )}
@@ -221,7 +225,7 @@ export function TeachingCommentPicker({
                     style={{
                         left: inputLeft,
                         top: inputTop,
-                        width: 320,
+                        width: inputWidth,
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                 >

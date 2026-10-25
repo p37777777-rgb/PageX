@@ -6,8 +6,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { createPortal } from 'react-dom';
 import { resolveShadowPortal } from '@/shared/extension/shadow-portal';
 import { cn } from '@/shared/utils/utils';
-import { SPRING_LAYOUT } from './ease';
-
 export type ToastStatus = 'neutral' | 'info' | 'loading' | 'success' | 'error';
 
 export interface AnimatedToast {
@@ -98,18 +96,18 @@ export function AnimatedToastStack({
                             initial={
                                 reduce
                                     ? { opacity: 0 }
-                                    : { opacity: 0, y: 14, scale: 0.97, filter: 'blur(8px)' }
+                                    : { opacity: 0 }
                             }
-                            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+                            animate={{ opacity: 1 }}
                             exit={
                                 reduce
                                     ? { opacity: 0 }
-                                    : { opacity: 0, y: 8, scale: 0.97, filter: 'blur(6px)' }
+                                    : { opacity: 0 }
                             }
-                            transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
+                            transition={reduce ? { duration: 0 } : { duration: 0.16 }}
                             className="pointer-events-auto"
                         >
-                            <div className="flex items-start gap-3 rounded-card border border-border bg-card/95 p-3 shadow-raised backdrop-blur-xl">
+                            <div className="flex items-start gap-3 border border-line bg-surface p-3">
                 <span
                     className={cn(
                         'mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full',

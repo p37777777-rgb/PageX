@@ -14,10 +14,13 @@ import {
     type KeyboardEvent,
     type ReactNode,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { motion, useReducedMotion, type HTMLMotionProps } from 'motion/react';
 import { cn } from '@/shared/utils/utils';
 import { EASE_OUT } from './ease';
+import { elementById, placeOverlayMenu, type MenuBox } from '../menu-bounds';
+import { resolveShadowPortal } from '@/shared/extension/shadow-portal';
 
 type SelectOption = { value: string; label: string; id: string; disabled: boolean };
 
@@ -126,7 +129,16 @@ export function Select({
             if (event.key === 'Escape') setOpen(false);
         };
         const closeOnPointer = (event: PointerEvent) => {
-            if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+            const target = event.target as Node | null;
+            if (!target) return;
+            if (rootRef.current?.contains(target)) return;
+            const scope = target.getRootNode();
+            const menu =
+                scope instanceof ShadowRoot || scope instanceof Document
+                    ? scope.getElementById(`${baseId}-list`)
+                    : null;
+            if (menu?.contains(target)) return;
+            setOpen(false);
         };
         window.addEventListener('keydown', closeOnEscape);
         window.addEventListener('pointerdown', closeOnPointer);
@@ -134,7 +146,7 @@ export function Select({
             window.removeEventListener('keydown', closeOnEscape);
             window.removeEventListener('pointerdown', closeOnPointer);
         };
-    }, [open, setOpen]);
+    }, [baseId, open, setOpen]);
 
     const context = useMemo<SelectContextValue>(
         () => ({
@@ -235,7 +247,6 @@ export function SelectTrigger({ className, children, onKeyDown, ...props }: Sele
             onClick={() => context.setOpen(!context.open)}
             onKeyDown={handleKeyDown}
             initial={false}
-            whileTap={context.reduce ? undefined : { scale: 0.99 }}
             className={cn(
                 'relative flex h-9 w-full items-center justify-between gap-2 rounded-control border border-input bg-card px-3 text-sm text-foreground outline-none transition-colors',
                 'hover:border-line-strong focus-visible:ring-2 focus-visible:ring-ring/40',
@@ -247,7 +258,7 @@ export function SelectTrigger({ className, children, onKeyDown, ...props }: Sele
             <motion.span
                 aria-hidden
                 animate={{ rotate: context.open ? 180 : 0 }}
-                transition={context.reduce ? { duration: 0 } : { type: 'spring', duration: 0.4, bounce: 0.3 }}
+                transition={context.reduce ? { duration: 0 } : { duration: 0.16, ease: EASE_OUT }}
                 className="text-muted-foreground"
             >
                 <ChevronDown className="size-4" />
@@ -274,43 +285,60 @@ export function SelectValue({
 
 export function SelectContent({ className, children }: { className?: string; children: ReactNode }) {
     const context = useSelect('SelectContent');
-    const contentRef = useRef<HTMLDivElement>(null);
-    const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
+    const anchorRef = useRef<HTMLSpanElement>(null);
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+    const [box, setBox] = useState<MenuBox | null>(null);
 
     useLayoutEffect(() => {
-        if (!context.open) return;
-        const trigger = document.getElementById(context.triggerId);
-        if (!trigger || !contentRef.current) return;
-        const rect = trigger.getBoundingClientRect();
-        const height = contentRef.current.scrollHeight;
-        const below = window.innerHeight - rect.bottom;
-        setPlacement(below < height + 12 && rect.top > below ? 'top' : 'bottom');
-    }, [context.open, context.triggerId]);
+        setPortalTarget(resolveShadowPortal(anchorRef.current) ?? document.body);
+    }, []);
 
-    return (
-        <motion.div
+    useLayoutEffect(() => {
+        if (!context.open) {
+            setBox(null);
+            return;
+        }
+        const trigger = elementById(anchorRef.current, context.triggerId);
+        if (!trigger) return;
+        const place = () => setBox(placeOverlayMenu(trigger));
+        place();
+        window.addEventListener('resize', place);
+        window.addEventListener('scroll', place, true);
+        return () => {
+            window.removeEventListener('resize', place);
+            window.removeEventListener('scroll', place, true);
+        };
+    }, [context.open, context.triggerId, context.options.length]);
+
+    const menu = (
+        <div
             id={context.listId}
-            ref={contentRef}
             role="listbox"
             aria-labelledby={context.triggerId}
             aria-hidden={!context.open}
-            inert={!context.open}
-            initial={false}
-            animate={{
-                opacity: context.open ? 1 : 0,
-                height: context.open ? 'auto' : 0,
-                y: context.open || context.reduce ? 0 : placement === 'top' ? 4 : -4,
-            }}
-            transition={context.reduce ? { duration: 0 } : { duration: 0.22, ease: EASE_OUT }}
+            inert={context.open ? undefined : true}
             className={cn(
-                'absolute right-0 left-0 z-40 overflow-hidden rounded-control border border-border bg-popover shadow-overlay',
-                placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
+                'z-[80] overflow-hidden border border-line-strong bg-popover text-popover-foreground',
+                context.open && box ? 'pointer-events-auto fixed' : 'pointer-events-none absolute h-0 w-0 opacity-0',
                 className,
             )}
-            style={{ pointerEvents: context.open ? 'auto' : 'none' }}
+            style={
+                context.open && box
+                    ? { left: box.left, top: box.top, width: box.width, maxHeight: box.maxHeight }
+                    : undefined
+            }
         >
-            <div className="max-h-60 overflow-y-auto p-1">{children}</div>
-        </motion.div>
+            <div className="overflow-y-auto p-1" style={box ? { maxHeight: box.maxHeight } : undefined}>
+                {children}
+            </div>
+        </div>
+    );
+
+    return (
+        <>
+            <span ref={anchorRef} hidden />
+            {portalTarget ? createPortal(menu, portalTarget) : menu}
+        </>
     );
 }
 
@@ -347,7 +375,7 @@ export function SelectItem({
             onPointerMove={() => context.setActiveValue(value)}
             onClick={() => context.select(value)}
             className={cn(
-                'flex w-full items-center justify-between gap-2 rounded-[7px] px-2.5 py-1.5 text-left text-sm outline-none transition-colors',
+                'flex w-full min-w-0 items-center justify-between gap-2 px-2.5 py-1.5 text-left text-sm break-words whitespace-normal outline-none transition-colors',
                 selected || active
                     ? 'bg-muted text-foreground'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground',

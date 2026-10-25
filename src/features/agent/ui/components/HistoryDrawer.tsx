@@ -19,6 +19,7 @@ export function HistoryDrawer({
 }) {
     const [mounted, setMounted] = useState(open);
     const [shown, setShown] = useState(open);
+    const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
     useEffect(() => {
         if (open) {
@@ -93,13 +94,20 @@ export function HistoryDrawer({
                                             </button>
                                             <button
                                                 type="button"
-                                                aria-label={`删除${item.title}`}
-                                                onClick={() => onDelete(item.id)}
-                                                className="flex size-5 shrink-0 items-center justify-center rounded-[4px] text-ink-3 hover:bg-hover hover:text-ink"
+                                                aria-label={pendingDelete === item.id ? `确认删除${item.title}` : `删除${item.title}`}
+                                                onClick={() => {
+                                                    if (pendingDelete === item.id) {
+                                                        onDelete(item.id);
+                                                        setPendingDelete(null);
+                                                        return;
+                                                    }
+                                                    setPendingDelete(item.id);
+                                                }}
+                                                className={`shrink-0 px-1 text-[11px] font-semibold ${
+                                                    pendingDelete === item.id ? 'text-red' : 'text-ink-3 hover:text-red'
+                                                }`}
                                             >
-                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
-                                                    <path d="M18 6L6 18M6 6l12 12" />
-                                                </svg>
+                                                {pendingDelete === item.id ? '确认' : '删除'}
                                             </button>
                                         </div>
                                     );

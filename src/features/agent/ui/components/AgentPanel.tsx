@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PointerEvent, UIEvent, WheelEvent } from 'react';
 import { IconBrowser, IconCommand, IconEye, IconPointer } from '@tabler/icons-react';
-import LoadingState from '@/shared/ui/beautiful-ui/primitives/LoadingState';
 import { SettingsPanel } from '@/features/settings/SettingsPanel';
 import { useStickToBottom } from '../hooks/useStickToBottom';
 import {
@@ -50,7 +49,6 @@ export function AgentPanel({
                                running,
                                workingOnThisPage = running,
                                thinking,
-                               startedAt,
                                error,
                                page,
                                view,
@@ -111,7 +109,7 @@ export function AgentPanel({
     onStop: () => void;
     onClearSelection: () => void;
     onSettingsChange: (settings: AgentSettings) => void;
-    onHeaderPointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
+    onHeaderPointerDown?: (event: PointerEvent<HTMLElement>) => void;
     imageDataUrl?: string;
     onMarkScreen: () => void;
     onRemoveImage: () => void;
@@ -212,7 +210,7 @@ export function AgentPanel({
     };
 
     return (
-        <div className="pagex-window relative flex h-[min(680px,calc(100vh-48px))] w-full flex-col self-start">
+        <div className="pagex-window relative flex h-full min-h-0 w-full flex-col">
             <PanelHeader
                 running={running}
                 workingOnThisPage={workingOnThisPage}
@@ -264,7 +262,7 @@ export function AgentPanel({
                     {view === 'settings' ? (
                         <SettingsPanel settings={settings} onChange={onSettingsChange} />
                     ) : (
-                        <div ref={contentRef} className="flex flex-col gap-2.5">
+                    <div ref={contentRef} className="flex flex-col gap-3">
                             <PageContext page={page} onClearSelection={onClearSelection} />
                             {hiddenCount > 0 && (
                                 <HiddenMessagesBanner
@@ -343,6 +341,12 @@ export function AgentPanel({
                                     />
                                 ),
                             )}
+                            {renderedMessages.length === 0 && hiddenCount === 0 && !running && !error && (
+                                <div className="pagex-empty-inline">
+                                    <div className="pagex-eyebrow">SESSION / 会话</div>
+                                    <p>向当前页面下达一个任务。</p>
+                                </div>
+                            )}
                             {teachingSession && ['summarizing', 'reviewing'].includes(teachingSession.status) && (
                                 <FlowConfirmCard
                                     session={teachingSession}
@@ -355,10 +359,13 @@ export function AgentPanel({
                                 <CommandSavedAlert command={confirmedCommand} />
                             )}
                             {running && !hidingCurrentTurn && !hasAssistantOutput(renderedMessages.at(-1)) && (
-                                <LoadingState label={thinking || '正在思考…'} variant="Dots" startTime={startedAt} />
+                                <p className="pagex-live-row" role="status">
+                                    <span className="pagex-flag">进行</span>
+                                    <span className="min-w-0 flex-1 truncate">{thinking || '正在思考'}</span>
+                                </p>
                             )}
                             {error && !hidingCurrentTurn && (
-                                <div className="rounded-card bg-red-tint px-3 py-2 text-[12.5px] text-red">
+                                <div className="pagex-alert" role="alert">
                                     {error}
                                 </div>
                             )}

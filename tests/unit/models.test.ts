@@ -24,7 +24,7 @@ describe('model providers', () => {
   it('uses DeepSeek chat completions so streamed reasoning is preserved', () => {
     const deepseek = settings({
       provider: 'deepseek',
-      model: 'deepseek-v4-flash',
+      model: 'deepseek-flash',
       apiProtocol: 'chat-completions',
     });
     expect(providerSupportsResponsesApi('deepseek')).toBe(false);
@@ -73,10 +73,10 @@ describe('model providers', () => {
   });
 
   it('lists real models for each provider', () => {
-    expect(modelsForProvider('deepseek').map((item) => item.id)).toContain('deepseek-v4-flash');
-    expect(resolveCatalogModel('deepseek', 'deepseek-v4-flash').apiProtocol).toBe('chat-completions');
+    expect(modelsForProvider('deepseek').map((item) => item.id)).toContain('deepseek-flash');
+    expect(resolveCatalogModel('deepseek', 'deepseek-flash').apiProtocol).toBe('chat-completions');
     expect(resolveCatalogModel('deepseek', 'deepseek-chat').apiProtocol).toBe('chat-completions');
-    expect(resolveCatalogModel('openai', 'gpt-4o-mini').id).toBe('gpt-4o-mini');
+    expect(resolveCatalogModel('openai', 'gpt-5.2').id).toBe('gpt-5.2');
   });
 
   it('accepts DeepSeek in secret and test RPC payloads', () => {
@@ -86,7 +86,7 @@ describe('model providers', () => {
     expect(
       parseRpcPayload('llm.test', {
         provider: 'deepseek',
-        model: 'deepseek-v4-flash',
+        model: 'deepseek-flash',
         apiProtocol: 'responses',
       }),
     ).toMatchObject({

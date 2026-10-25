@@ -38,7 +38,6 @@ import {
     isTeachingCommentDirectHotkey,
     isTeachingCommentElementHotkey,
 } from '@/shared/extension/hotkey';
-import { BotIcon } from '@/shared/ui/BotIcon';
 
 export function AgentApp({
                              open,
@@ -285,7 +284,7 @@ export function AgentApp({
         };
     }, []);
 
-    const onHeaderPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const onHeaderPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
         if (event.button !== 0 || !isPanelDragTarget(event.target)) return;
         const rect = panelRef.current?.getBoundingClientRect();
         if (!rect) return;
@@ -519,13 +518,7 @@ export function AgentApp({
                         aria-hidden={open}
                         aria-label={session.agentActive ? '打开 PageX，Agent Active' : '打开 PageX'}
                     >
-                        {session.agentActive ? (
-                            <>
-                                <span className="pagex-fab-halo" aria-hidden />
-                                <span className="pagex-fab-pulse" aria-hidden />
-                            </>
-                        ) : null}
-                        <BotIcon animated size={56} aria-hidden />
+                        <span className="pagex-fab-word" aria-hidden>PX</span>
                     </button>
                 </div>
             </div>
@@ -582,7 +575,7 @@ export function AgentApp({
             {captureError && (
                 <div
                     role="alert"
-                    className="pointer-events-auto fixed top-4 left-1/2 z-2147483647 -translate-x-1/2 rounded-xl border border-red/25 bg-surface px-4 py-2 text-[12.5px] text-red shadow-raised"
+                    className="pagex-alert pointer-events-auto fixed top-4 left-1/2 z-2147483647 w-[min(360px,calc(100vw-32px))] -translate-x-1/2"
                 >
                     截图失败：{captureError}
                 </div>
