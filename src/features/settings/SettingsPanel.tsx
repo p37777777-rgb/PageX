@@ -272,22 +272,24 @@ export function SettingsPanel({
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="relative space-y-1.5">
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="absolute -top-1 right-0 h-6 gap-1 px-1.5 text-[11.5px] text-ink-2"
-                        disabled={fetchingModels}
-                        onClick={() => void refreshModels(provider, { force: true })}
-                    >
-                        {fetchingModels ? (
-                            <IconLoader2 aria-hidden className="size-3.5 animate-spin" />
-                        ) : (
-                            <IconRefresh aria-hidden className="size-3.5" />
-                        )}
-                        {fetchingModels ? '获取中…' : '刷新模型列表'}
-                    </Button>
-                    <Label htmlFor="model-name">模型</Label>
+                <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="model-name">模型</Label>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 shrink-0 px-2 text-[12px] text-ink-2"
+                            disabled={fetchingModels}
+                            onClick={() => void refreshModels(provider, { force: true })}
+                        >
+                            {fetchingModels ? (
+                                <IconLoader2 aria-hidden className="size-3.5 animate-spin" />
+                            ) : (
+                                <IconRefresh aria-hidden className="size-3.5" />
+                            )}
+                            {fetchingModels ? '获取中' : '刷新'}
+                        </Button>
+                    </div>
                     <Select
                         value={settings.model.model}
                         onValueChange={(model) => {
@@ -322,7 +324,7 @@ export function SettingsPanel({
                                 const nextModel =
                                     provider === 'deepseek'
                                         ? apiProtocol === 'responses'
-                                            ? 'deepseek-v4-flash'
+                                            ? 'deepseek-flash'
                                             : settings.model.model.startsWith('deepseek-v4')
                                                 ? 'deepseek-chat'
                                                 : settings.model.model

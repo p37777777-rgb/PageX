@@ -16,25 +16,33 @@ export function PanelHeader({
     onClear: () => void;
     onViewChange: (view: 'chat' | 'settings') => void;
     onMinimize: () => void;
-    onHeaderPointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
+    onHeaderPointerDown?: (event: PointerEvent<HTMLElement>) => void;
 }) {
     const statusLabel = running ? '工作中' : '准备就绪';
 
     return (
         <div
-            className="flex h-10 shrink-0 cursor-grab items-center gap-2 border-b border-line pr-2 pl-3.5 select-none active:cursor-grabbing"
-            onPointerDown={onHeaderPointerDown}
+            className="pagex-panel-header flex h-12 shrink-0 items-center gap-2 pr-2 pl-2 select-none"
         >
+            <button
+                type="button"
+                data-panel-drag="true"
+                aria-label="拖动面板"
+                className="pagex-grip"
+                onPointerDown={onHeaderPointerDown}
+            >
+                <span />
+                <span />
+            </button>
       <span
           className={`pagex-led ${workingOnThisPage ? 'is-on' : ''}`}
           title={workingOnThisPage ? 'Agent 正在此页面工作' : 'Agent 未在此页面工作'}
           aria-label={workingOnThisPage ? 'Agent 正在此页面工作' : 'Agent 未在此页面工作'}
       />
             <div className="min-w-0 flex-1">
+        <span className="pagex-eyebrow block text-[9px]">AGENT / 助手</span>
         <span
-            className={`block truncate text-[12px] font-medium ${
-                running ? 'text-ink' : 'text-ink-3'
-            }`}
+            className="pagex-header-status block truncate text-[13px] font-bold"
             aria-live="polite"
         >
           {statusLabel}
@@ -42,7 +50,7 @@ export function PanelHeader({
             </div>
             <div className="flex shrink-0 items-center gap-1">
                 {[
-                    { label: '清空对话', onClick: onClear, path: <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /> },
+                    { label: '收起记录', onClick: onClear, path: <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /> },
                     {
                         label: '设置',
                         onClick: () => onViewChange(view === 'settings' ? 'chat' : 'settings'),

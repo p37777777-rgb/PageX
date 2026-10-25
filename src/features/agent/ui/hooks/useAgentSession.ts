@@ -1,127 +1,85 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+//Agent 面板的总装 hook：把会话 store、后台同步、事件消费、动作层和页面上下文组合起来，
+//向 AgentApp 暴露一份完整的会话视图与操作集合（返回字段与整理前完全一致）。
+//会话状态本体在 zustand store（../store/agent-session-store），这里只保留设置与主题这类
+//面板本地的 UI 状态。
+import { useEffect, useMemo, useState } from 'react';
 import { rpc } from '@/shared/extension/rpc-client';
 import { conversationVaultKey } from '@/features/agent/session/vault';
 import { DEFAULT_SETTINGS, type AgentSettings } from '@/shared/contracts/settings';
-import type { PageConversation } from '@/shared/contracts/session';
 import { startClientKeepAlive } from '@/shared/extension/keepalive';
 import { usePageContext } from './usePageContext';
 import { useBackgroundSessionSync } from './useBackgroundSessionSync';
 import { useAgentEventConsumer } from './useAgentEventConsumer';
 import { useConversationActions } from './useConversationActions';
+import { useAgentSessionStore } from '../store/agent-session-store';
 
 const STORE_SAVE_DEBOUNCE_MS = 400;
 
 export function useAgentSession() {
-    const [view, setView] = useState<'chat' | 'settings'>('chat');
     const [settings, setSettings] = useState<AgentSettings>(DEFAULT_SETTINGS);
     const { page, clearSelection } = usePageContext();
+
+    //全量订阅 store：与原来那组集中在 useContext 内的 useState 行为一致，
+    //任一会话状态变化都会让面板重渲染。
+    const session = useAgentSessionStore();
     const vaultKey = conversationVaultKey(page.url) ?? undefined;
 
-    const runningIdRef = useRef<string | null>(null);
-    const activeIdRef = useRef('');
-    const conversationsRef = useRef<PageConversation[]>([]);
-    const pageUrlRef = useRef(page.url);
-    const revisionRef = useRef(0);
-    const sessionIdRef = useRef<string | undefined>(undefined);
-    const deletedConversationIdsRef = useRef(new Set<string>());
-    const closedTabIdsRef = useRef(new Set<string>());
-    const [closedTabIds, setClosedTabIds] = useState<Set<string>>(() => new Set());
-    pageUrlRef.current = page.url;
+    //页面上下文同步进 store，供动作层与保存逻辑在事件回调里读到最新 URL。
+    //声明在其余 effect 之前，保证同一提交内先更新 URL 再调度保存。
+    useEffect(() => {
+        useAgentSessionStore.getState().setPageUrl(page.url);
+    }, [page.url]);
 
-    const sync = useBackgroundSessionSync(vaultKey, page.url, {
-        runningIdRef,
-        activeIdRef,
-        conversationsRef,
-        pageUrlRef,
-        revisionRef,
-        sessionIdRef,
-    });
-
-    activeIdRef.current = sync.activeId;
-    conversationsRef.current = sync.conversations;
-    revisionRef.current = sync.revision;
-    sessionIdRef.current = sync.sessionId;
-
-    const bumpRevision = useCallback(() => {
-        const next = revisionRef.current + 1;
-        revisionRef.current = next;
-        sync.setRevision(next);
-        return next;
-    }, [sync.setRevision]);
+    useBackgroundSessionSync(vaultKey);
+    useAgentEventConsumer();
+    const actions = useConversationActions();
 
     useEffect(() => {
         void rpc('settings.get', {}).then((value) => setSettings(value as AgentSettings));
     }, []);
 
+    //防抖保存：依赖与整理前一致（readyKey / activeId / conversations / revision / sessionId），
+    //runningId 与页面 URL 在回调里直读 store 最新值，不进依赖。
     useEffect(() => {
-        if (!sync.readyKey || runningIdRef.current) return;
+        if (!session.readyKey) return;
+        if (useAgentSessionStore.getState().runningId) return;
         const timer = window.setTimeout(() => {
+            const latest = useAgentSessionStore.getState();
             void rpc('session.saveStore', {
-                activeId: sync.activeId,
-                conversations: sync.conversations,
-                url: pageUrlRef.current,
-                revision: sync.revision,
-                sessionId: sync.sessionId,
-                deletedConversationIds: [...deletedConversationIdsRef.current],
+                activeId: latest.activeId,
+                conversations: latest.conversations,
+                url: latest.pageUrl,
+                revision: latest.revision,
+                sessionId: latest.sessionId,
+                deletedConversationIds: [...latest.deletedConversationIds],
             }).catch(() => {});
         }, STORE_SAVE_DEBOUNCE_MS);
         return () => window.clearTimeout(timer);
-    }, [sync.readyKey, sync.activeId, sync.conversations, sync.revision, sync.sessionId]);
+    }, [session.readyKey, session.activeId, session.conversations, session.revision, session.sessionId]);
 
     useEffect(() => {
-        if (!sync.workingOnThisPage) return;
+        if (!session.workingOnThisPage) return;
         return startClientKeepAlive();
-    }, [sync.workingOnThisPage]);
+    }, [session.workingOnThisPage]);
 
     useEffect(() => {
         const flush = () => {
-            if (!sync.readyKey) return;
+            const latest = useAgentSessionStore.getState();
+            if (!latest.readyKey) return;
             void rpc('session.saveStore', {
-                activeId: activeIdRef.current,
-                conversations: conversationsRef.current,
-                url: pageUrlRef.current,
-                revision: revisionRef.current,
-                sessionId: sessionIdRef.current,
-                deletedConversationIds: [...deletedConversationIdsRef.current],
+                activeId: latest.activeId,
+                conversations: latest.conversations,
+                url: latest.pageUrl,
+                revision: latest.revision,
+                sessionId: latest.sessionId,
+                deletedConversationIds: [...latest.deletedConversationIds],
             });
         };
         window.addEventListener('pagehide', flush);
         return () => window.removeEventListener('pagehide', flush);
-    }, [sync.readyKey]);
+    }, [session.readyKey]);
 
-    useAgentEventConsumer({
-        runningIdRef,
-        revisionRef,
-        sessionIdRef,
-        conversationsRef,
-        setConversations: sync.setConversations,
-        setActiveId: sync.setActiveId,
-        setRevision: sync.setRevision,
-        setSessionId: sync.setSessionId,
-        setWorkingOnThisPage: sync.setWorkingOnThisPage,
-        setAgentActive: sync.setAgentActive,
-    });
-
-    const actions = useConversationActions({
-        runningIdRef,
-        activeIdRef,
-        conversationsRef,
-        pageUrlRef,
-        revisionRef,
-        sessionIdRef,
-        deletedConversationIdsRef,
-        closedTabIdsRef,
-        setClosedTabIds,
-        setConversations: sync.setConversations,
-        setActiveId: sync.setActiveId,
-        setRevision: sync.setRevision,
-        setWorkingOnThisPage: sync.setWorkingOnThisPage,
-        setAgentActive: sync.setAgentActive,
-        setView,
-        bumpRevision,
-    });
-
-    const active = sync.conversations.find((item) => item.id === sync.activeId) ?? sync.conversations[0];
+    const active = session.conversations.find((item) => item.id === session.activeId) ?? session.conversations[0];
 
     const [systemDark, setSystemDark] = useState(
         () => window.matchMedia('(prefers-color-scheme: dark)').matches,
@@ -142,13 +100,13 @@ export function useAgentSession() {
     }, [settings.theme, systemDark]);
 
     return {
-        view,
-        setView,
+        view: session.view,
+        setView: useAgentSessionStore.getState().setView,
         settings,
         setSettings,
-        conversations: sync.conversations,
-        closedTabIds,
-        activeId: active?.id ?? sync.activeId,
+        conversations: session.conversations,
+        closedTabIds: session.closedTabIds,
+        activeId: active?.id ?? session.activeId,
         messages: active?.messages ?? [],
         tasks: active?.tasks ?? [],
         running: Boolean(active?.running),
@@ -165,10 +123,10 @@ export function useAgentSession() {
         closeTab: actions.closeTab,
         deleteConversation: actions.deleteConversation,
         themeClass,
-        ready: Boolean(sync.readyKey),
-        restorePanel: sync.restorePanel,
-        attachKey: sync.attachKey,
-        workingOnThisPage: sync.workingOnThisPage,
-        agentActive: sync.agentActive,
+        ready: Boolean(session.readyKey),
+        restorePanel: session.restorePanel,
+        attachKey: session.attachKey,
+        workingOnThisPage: session.workingOnThisPage,
+        agentActive: session.agentActive,
     };
 }

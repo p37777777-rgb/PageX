@@ -15,6 +15,7 @@ import {
     idbGetAll,
     idbReplaceAll,
     idbSet,
+    migrateLegacyPagentDbIfNeeded,
     resetSessionDbForTests,
     SESSION_STORES,
 } from './idb';
@@ -91,10 +92,53 @@ function withVaultLock<T>(fn: () => Promise<T>): Promise<T> {
     );
     return run;
 }
+
+// ---------- pagent -> PageX 的 chrome.storage key 迁移 ----------
+// pagent 时代的设置、密钥、检查点等仍存在旧 key 下；PageX 改用了 pagex-* key。
+// 这里把旧值搬到新 key：仅当新 key 还没有数据时才搬（幂等，不覆盖、不删除旧 key）。
+// 会话/归档类数据不走这里——它们的权威源是旧 IndexedDB 库 'pagent'，由
+// migrateLegacyPagentDbIfNeeded 导入。
+type WxtStorageKey = `local:${string}` | `session:${string}`;
+
+const LEGACY_STORAGE_KEYS: Array<[WxtStorageKey, WxtStorageKey]> = [
+    ['local:pagent-settings', 'local:pagex-settings'],
+    ['local:pagent-mcp-config', 'local:pagex-mcp-config'],
+    ['local:pagent-checkpoints', 'local:pagex-checkpoints'],
+    ['local:pagent-secrets', 'local:pagex-secrets'],
+    ['local:pagent-memory-secret', 'local:pagex-memory-secret'],
+    ['local:pagent:permanently-hidden', 'local:pagex:permanently-hidden'],
+    ['session:pagent-secrets', 'session:pagex-secrets'],
+];
+
+function legacyValueExists(value: unknown): boolean {
+    if (value === undefined || value === null) return false;
+    if (typeof value === 'object' && Object.keys(value as object).length === 0) return false;
+    if (typeof value === 'string' && value === '') return false;
+    return true;
+}
+
+async function migrateLegacyChromeStorageIfNeeded(): Promise<void> {
+    await Promise.all(
+        LEGACY_STORAGE_KEYS.map(async ([legacyKey, currentKey]) => {
+            const legacyItem = storage.defineItem<unknown>(legacyKey);
+            const currentItem = storage.defineItem<unknown>(currentKey);
+            const [legacyValue, currentValue] = await Promise.all([
+                legacyItem.getValue(),
+                currentItem.getValue(),
+            ]);
+            if (!legacyValueExists(legacyValue)) return;
+            if (legacyValueExists(currentValue)) return;
+            await currentItem.setValue(legacyValue);
+        }),
+    );
+}
+
 //检查是否已经迁移过
 async function ensureSessionStorage(): Promise<void> {
     if (!ready) {
-        ready = migrateChromeSessionIfNeeded()
+        ready = migrateLegacyChromeStorageIfNeeded()
+            .then(() => migrateLegacyPagentDbIfNeeded())
+            .then(() => migrateChromeSessionIfNeeded())
             .then(() => reconcileTabScopedSession())
             .catch((error) => {
                 ready = null;

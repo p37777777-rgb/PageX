@@ -40,7 +40,9 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 function listenPorts(): number[] {
     const range = mcpHostPorts();
-    const raw = argValue('--port') ?? process.env.PAGEX_MCP_PORT;
+    // PAGENT_MCP_PORT 为 pagent 时代的变量名，保留兜底以兼容旧部署脚本
+    const raw =
+        argValue('--port') ?? process.env.PAGEX_MCP_PORT ?? process.env.PAGENT_MCP_PORT;
     if (raw == null) return range;
     const preferred = Number(raw);
     if (!Number.isInteger(preferred) || !range.includes(preferred)) {

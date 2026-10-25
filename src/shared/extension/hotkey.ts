@@ -1,4 +1,5 @@
-export const TOGGLE_PANEL_COMMAND = 'toggle-PageX';
+// 必须与 wxt.config.ts manifest.commands 里注册的命令名完全一致（Chrome commands 区分大小写）
+export const TOGGLE_PANEL_COMMAND = 'toggle-pagex';
 export const TOGGLE_PANEL_HOTKEY_LABEL = 'Alt+P';
 //快捷键检测模块alt+p快速开启
 export function isTogglePanelHotkey(

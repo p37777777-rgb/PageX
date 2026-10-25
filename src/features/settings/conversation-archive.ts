@@ -1,15 +1,7 @@
 import { isSparseConversation, pickRicherConversation } from '@/features/agent/session/conversations';
 import { messageBlocks } from '@/features/agent/session/messages';
 import { toolLabel } from '@/features/agent/session/tool-display';
-//差文件
-//差文件
-//差文件
-//差文件
-//差文件
-//差文件
-//差文件
-//差文件
-//差文件
+// 会话归档：把各域名 vault 里的会话压平成摘要列表，并支持导出为 Markdown / JSON。
 import type {
     ConversationSummary,
     DomainVault,

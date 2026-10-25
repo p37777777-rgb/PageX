@@ -4,7 +4,7 @@ import { useCallback, useId, useState, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { cn } from '@/shared/utils/utils';
-import { EASE_OUT, SPRING_LAYOUT } from './ease';
+import { EASE_OUT } from './ease';
 
 export interface BouncyAccordionItem {
     id: string;
@@ -63,8 +63,7 @@ export function BouncyAccordion({
                 return (
                     <motion.section
                         key={item.id}
-                        layout="position"
-                        transition={reduce ? { duration: 0 } : SPRING_LAYOUT}
+                        transition={reduce ? { duration: 0 } : { duration: 0.16 }}
                         className={cn(
                             'overflow-hidden rounded-card border border-border bg-card text-card-foreground',
                             item.disabled && 'opacity-50',
@@ -99,7 +98,7 @@ export function BouncyAccordion({
                             <motion.span
                                 aria-hidden
                                 animate={{ rotate: open ? 180 : 0 }}
-                                transition={reduce ? { duration: 0 } : { type: 'spring', duration: 0.42, bounce: 0.28 }}
+                                transition={reduce ? { duration: 0 } : { duration: 0.16, ease: EASE_OUT }}
                                 className="text-muted-foreground"
                             >
                                 <ChevronDown className="size-3.5" />
@@ -114,7 +113,7 @@ export function BouncyAccordion({
                                     initial={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
                                     animate={reduce ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
                                     exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                                    transition={reduce ? { duration: 0 } : { duration: 0.35, ease: EASE_OUT }}
+                                    transition={reduce ? { duration: 0 } : { duration: 0.18, ease: EASE_OUT }}
                                     className={cn('overflow-hidden border-t border-border', classNames?.content)}
                                 >
                                     <div className={cn('px-3 pt-2.5 pb-3', classNames?.description)}>

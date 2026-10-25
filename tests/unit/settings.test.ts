@@ -37,7 +37,7 @@ describe('applySettingsPatch', () => {
     const next = applySettingsPatch(DEFAULT_SETTINGS, { model: { provider: 'moonshot' } });
     expect(next.model).toMatchObject({
       provider: 'moonshot',
-      model: 'kimi-k2-0711-preview',
+      model: 'kimi-k3',
       apiProtocol: 'chat-completions',
     });
     expect(next.model.baseURL).toBeUndefined();
@@ -62,7 +62,7 @@ describe('applySettingsPatch', () => {
     });
     expect(reset.model).toEqual(DEFAULT_SETTINGS.model);
     expect(reset.providerProfiles).toEqual({
-      openai: { model: 'gpt-4o-mini', apiProtocol: 'chat-completions' },
+      openai: { model: 'gpt-5.2', apiProtocol: 'chat-completions' },
     });
   });
 

@@ -118,10 +118,13 @@ describe('panel position', () => {
     const button = document.createElement('button');
     const bar = document.createElement('div');
     const handle = document.createElement('div');
+    const grip = document.createElement('button');
     handle.setAttribute('data-panel-resize', 'left');
-    bar.append(button);
+    grip.setAttribute('data-panel-drag', 'true');
+    bar.append(button, grip);
     expect(isPanelDragTarget(button)).toBe(false);
     expect(isPanelDragTarget(handle)).toBe(false);
-    expect(isPanelDragTarget(bar)).toBe(true);
+    expect(isPanelDragTarget(bar)).toBe(false);
+    expect(isPanelDragTarget(grip)).toBe(true);
   });
 });

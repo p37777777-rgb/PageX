@@ -1,10 +1,11 @@
-//听后台广播的 Agent 事件，交给上面的 reducer。
-//流式更新不要每个 token 都重画整棵界面。
+//听后台广播的 Agent 事件，折进 store 里的会话列表（真正的消息变换在 agent-session-reducer）。
+//流式更新不要每个 token 都重画整棵界面：token/reasoning/tool-start 先进缓冲，50ms 批量落一次。
 import { useEffect } from 'react';
 import { CHANNEL } from '@/shared/contracts/channel';
 import type { AgentEvent } from '@/shared/contracts/agent';
 import type { PageConversationStore } from '@/shared/contracts/session';
 import { settleFinishedConversation } from '@/features/agent/session/conversations';
+import { useAgentSessionStore } from '../store/agent-session-store';
 import {
     applyAgentEventToConversations,
     applyStreamPending,
@@ -13,34 +14,9 @@ import {
 
 const STREAM_RENDER_INTERVAL_MS = 50;
 
-export function useAgentEventConsumer(options: {
-    runningIdRef: React.MutableRefObject<string | null>;
-    revisionRef: React.MutableRefObject<number>;
-    sessionIdRef: React.MutableRefObject<string | undefined>;
-    conversationsRef: React.MutableRefObject<import('@/shared/contracts/session').PageConversation[]>;
-    setConversations: React.Dispatch<
-        React.SetStateAction<import('@/shared/contracts/session').PageConversation[]>
-    >;
-    setActiveId: React.Dispatch<React.SetStateAction<string>>;
-    setRevision: React.Dispatch<React.SetStateAction<number>>;
-    setSessionId: React.Dispatch<React.SetStateAction<string | undefined>>;
-    setWorkingOnThisPage: React.Dispatch<React.SetStateAction<boolean>>;
-    setAgentActive: React.Dispatch<React.SetStateAction<boolean>>;
-}) {
-    const {
-        runningIdRef,
-        revisionRef,
-        sessionIdRef,
-        conversationsRef,
-        setConversations,
-        setActiveId,
-        setRevision,
-        setSessionId,
-        setWorkingOnThisPage,
-        setAgentActive,
-    } = options;
-
+export function useAgentEventConsumer() {
     useEffect(() => {
+        const store = useAgentSessionStore;
         let streamTimer: number | undefined;
         let pendingStream: StreamPending | undefined;
 
@@ -52,7 +28,7 @@ export function useAgentEventConsumer(options: {
             const pending = pendingStream;
             pendingStream = undefined;
             if (!pending) return;
-            setConversations((current) => applyStreamPending(current, pending));
+            store.getState().setConversations((current) => applyStreamPending(current, pending));
         };
 
         const scheduleFlush = () => {
@@ -96,15 +72,17 @@ export function useAgentEventConsumer(options: {
             if (message.kind === 'agent-retarget') {
                 flushPendingStream();
                 if (message.working === false) {
-                    runningIdRef.current = null;
-                    setWorkingOnThisPage(false);
-                    setAgentActive(Boolean(message.agentActive));
+                    store.setState({
+                        runningId: null,
+                        workingOnThisPage: false,
+                        agentActive: Boolean(message.agentActive),
+                    });
                 }
                 return;
             }
             if (message.kind !== 'agent-event' || !message.event) return;
             const event = message.event;
-            const targetId = runningIdRef.current;
+            const targetId = store.getState().runningId;
             if ((event.type === 'token' || event.type === 'reasoning') && targetId) {
                 enqueueStream(targetId, event.type, event.text);
                 return;
@@ -115,32 +93,36 @@ export function useAgentEventConsumer(options: {
             }
             flushPendingStream();
             if (event.type === 'error' || event.type === 'done') {
-                runningIdRef.current = null;
+                store.setState({ runningId: null });
             }
-            if (message.store && (message.revision ?? 0) > revisionRef.current) {
+            if (message.store && (message.revision ?? 0) > store.getState().revision) {
                 const incoming = message.store;
-                revisionRef.current = incoming.revision ?? message.revision ?? 0;
-                sessionIdRef.current = message.sessionId ?? incoming.sessionId;
-                runningIdRef.current = message.conversationId ?? incoming.activeId;
-                conversationsRef.current = incoming.conversations;
-                setConversations(incoming.conversations);
-                setActiveId(incoming.activeId);
-                setRevision(revisionRef.current);
-                setSessionId(sessionIdRef.current);
+                const nextRevision = incoming.revision ?? message.revision ?? 0;
+                const nextSessionId = message.sessionId ?? incoming.sessionId;
+                const nextRunningId = message.conversationId ?? incoming.activeId;
                 const liveHere = incoming.conversations.some(
-                    (item) => item.id === runningIdRef.current && item.running,
+                    (item) => item.id === nextRunningId && item.running,
                 );
-                setWorkingOnThisPage(liveHere);
-                setAgentActive(liveHere);
+                store.setState({
+                    revision: nextRevision,
+                    sessionId: nextSessionId,
+                    runningId: nextRunningId,
+                    conversations: incoming.conversations,
+                    activeId: incoming.activeId,
+                    workingOnThisPage: liveHere,
+                    agentActive: liveHere,
+                });
                 return;
             }
             if (!targetId) return;
 
             if (event.type === 'error') {
-                runningIdRef.current = null;
-                setWorkingOnThisPage(false);
-                setAgentActive(false);
-                setConversations((current) =>
+                store.setState({
+                    runningId: null,
+                    workingOnThisPage: false,
+                    agentActive: false,
+                });
+                store.getState().setConversations((current) =>
                     current.map((item) =>
                         item.id === targetId
                             ? { ...settleFinishedConversation(item), error: event.message }
@@ -150,32 +132,25 @@ export function useAgentEventConsumer(options: {
                 return;
             }
             if (event.type === 'done') {
-                runningIdRef.current = null;
-                setWorkingOnThisPage(false);
-                setAgentActive(false);
-                setConversations((current) =>
+                store.setState({
+                    runningId: null,
+                    workingOnThisPage: false,
+                    agentActive: false,
+                });
+                store.getState().setConversations((current) =>
                     current.map((item) => (item.id === targetId ? settleFinishedConversation(item) : item)),
                 );
                 return;
             }
 
-            setConversations((current) => applyAgentEventToConversations(current, targetId, event));
+            store.getState().setConversations((current) =>
+                applyAgentEventToConversations(current, targetId, event),
+            );
         };
         browser.runtime.onMessage.addListener(onMessage);
         return () => {
             if (streamTimer != null) window.clearTimeout(streamTimer);
             browser.runtime.onMessage.removeListener(onMessage);
         };
-    }, [
-        runningIdRef,
-        revisionRef,
-        sessionIdRef,
-        conversationsRef,
-        setConversations,
-        setActiveId,
-        setRevision,
-        setSessionId,
-        setWorkingOnThisPage,
-        setAgentActive,
-    ]);
+    }, []);
 }

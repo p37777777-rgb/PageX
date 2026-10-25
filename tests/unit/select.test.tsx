@@ -177,4 +177,57 @@ describe('Select toggle and dismissal behavior', () => {
     });
     expect(trigger.getAttribute('data-state')).toBe('closed');
   });
+
+  it('shows the menu when the select is mounted inside a shadow root', async () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const mount = document.createElement('div');
+    shadow.append(mount);
+    document.body.append(host);
+    const root = createRoot(mount);
+    let selected = '';
+
+    await act(async () => {
+      root.render(
+        <Select onValueChange={(value) => { selected = value; }}>
+          <SelectTrigger data-testid="trigger">
+            <SelectValue placeholder="Select a model" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="model-a">Model A</SelectItem>
+          </SelectContent>
+        </Select>,
+      );
+    });
+
+    const trigger = shadow.querySelector('[data-testid="trigger"]') as HTMLButtonElement;
+    await act(async () => {
+      trigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
+    });
+    await act(async () => {
+      trigger.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+
+    const menu = shadow.querySelector('[role="listbox"]') as HTMLElement | null;
+    expect(trigger.getAttribute('data-state')).toBe('open');
+    expect(menu).toBeTruthy();
+    expect(menu?.className).not.toContain('opacity-0');
+    expect(menu?.className).toContain('fixed');
+    expect(shadow.querySelector('[role="option"]')?.textContent).toContain('Model A');
+
+    const option = shadow.querySelector('[role="option"]') as HTMLButtonElement;
+    await act(async () => {
+      option.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerType: 'mouse' }));
+    });
+    await act(async () => {
+      option.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    expect(selected).toBe('model-a');
+    expect(trigger.getAttribute('data-state')).toBe('closed');
+
+    await act(async () => {
+      root.unmount();
+    });
+    host.remove();
+  });
 });

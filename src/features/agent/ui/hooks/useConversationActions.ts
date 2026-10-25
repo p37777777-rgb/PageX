@@ -1,3 +1,5 @@
+//会话动作层：发送、停止、新建、切换、关闭标签、删除，共 7 个函数。
+//由它们负责「改 store 里的会话状态 + 通知后台」；组件只管调用，不直接碰状态。
 import { useCallback } from 'react';
 import { rpc } from '@/shared/extension/rpc-client';
 import {
@@ -11,45 +13,10 @@ import {
 import { conversationVaultKey } from '@/features/agent/session/vault';
 import type { PageConversation, UserBadge, UserReference } from '@/shared/contracts/session';
 import { nowId } from '@/shared/utils/utils';
+import { useAgentSessionStore } from '../store/agent-session-store';
 import { patchConversation } from './agent-session-reducer';
-//会话动作层
-//想对会话做任何事——发送、停止、新建、切换、关闭标签、删除——都调这里返回的 7 个函数，
-// 由它们负责「改本地状态 + 通知后台」
-export function useConversationActions(options: {
-    runningIdRef: React.MutableRefObject<string | null>;
-    activeIdRef: React.MutableRefObject<string>;
-    conversationsRef: React.MutableRefObject<PageConversation[]>;
-    pageUrlRef: React.MutableRefObject<string>;
-    revisionRef: React.MutableRefObject<number>;
-    sessionIdRef: React.MutableRefObject<string | undefined>;
-    deletedConversationIdsRef: React.MutableRefObject<Set<string>>;
-    closedTabIdsRef: React.MutableRefObject<Set<string>>;
-    setClosedTabIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-    setConversations: React.Dispatch<React.SetStateAction<PageConversation[]>>;
-    setActiveId: React.Dispatch<React.SetStateAction<string>>;
-    setRevision: React.Dispatch<React.SetStateAction<number>>;
-    setWorkingOnThisPage: React.Dispatch<React.SetStateAction<boolean>>;
-    setAgentActive: React.Dispatch<React.SetStateAction<boolean>>;
-    setView: React.Dispatch<React.SetStateAction<'chat' | 'settings'>>;
-    bumpRevision: () => number;
-}) {
-    const {
-        runningIdRef,
-        activeIdRef,
-        conversationsRef,
-        pageUrlRef,
-        sessionIdRef,
-        deletedConversationIdsRef,
-        closedTabIdsRef,
-        setClosedTabIds,
-        setConversations,
-        setActiveId,
-        setWorkingOnThisPage,
-        setAgentActive,
-        setView,
-        bumpRevision,
-    } = options;
 
+export function useConversationActions() {
     const send = useCallback(async (
         prompt: string,
         context?: string,
@@ -57,16 +24,12 @@ export function useConversationActions(options: {
         badges?: UserBadge[],
         references?: UserReference[],
     ) => {
-        const id = activeIdRef.current;
-        runningIdRef.current = id;
-        setWorkingOnThisPage(true);
-        setAgentActive(true);
-        setView('chat');
-        const nextRevision = bumpRevision();
-        const current = conversationsRef.current.find((item) => item.id === id);
+        const store = useAgentSessionStore.getState();
+        const id = store.activeId;
+        const current = store.conversations.find((item) => item.id === id);
         const history = current?.messages ?? [];
         const now = Date.now();
-        const nextConversations = patchConversation(conversationsRef.current, id, (item) => ({
+        const nextConversations = patchConversation(store.conversations, id, (item) => ({
             ...item,
             error: '',
             running: true,
@@ -78,15 +41,22 @@ export function useConversationActions(options: {
                 { id: nowId('m'), role: 'user', content: prompt, imageDataUrl, badges, references },
             ],
         }));
-        conversationsRef.current = nextConversations;
-        setConversations(nextConversations);
+        const nextRevision = store.bumpRevision();
+        useAgentSessionStore.setState({
+            runningId: id,
+            workingOnThisPage: true,
+            agentActive: true,
+            view: 'chat',
+            conversations: nextConversations,
+        });
+        const latest = useAgentSessionStore.getState();
         void rpc('session.saveStore', {
             activeId: id,
             conversations: nextConversations,
-            url: pageUrlRef.current,
+            url: latest.pageUrl,
             revision: nextRevision,
-            sessionId: sessionIdRef.current,
-            deletedConversationIds: [...deletedConversationIdsRef.current],
+            sessionId: latest.sessionId,
+            deletedConversationIds: [...latest.deletedConversationIds],
         });
         await rpc('agent.start', {
             prompt,
@@ -97,167 +67,165 @@ export function useConversationActions(options: {
             conversationId: id,
             history,
         });
-    }, [
-        activeIdRef,
-        bumpRevision,
-        conversationsRef,
-        deletedConversationIdsRef,
-        pageUrlRef,
-        runningIdRef,
-        sessionIdRef,
-        setAgentActive,
-        setConversations,
-        setView,
-        setWorkingOnThisPage,
-    ]);
+    }, []);
 
     const stop = useCallback(async () => {
         // 本地立即结算，不等后台往返；后台会同步结算 store 并广播终止事件
-        runningIdRef.current = null;
-        setWorkingOnThisPage(false);
-        setAgentActive(false);
-        setConversations((current) =>
-            current.map((item) => (item.running ? settleFinishedConversation(item) : item)),
-        );
+        const store = useAgentSessionStore.getState();
+        useAgentSessionStore.setState({
+            runningId: null,
+            workingOnThisPage: false,
+            agentActive: false,
+            conversations: store.conversations.map((item) =>
+                item.running ? settleFinishedConversation(item) : item,
+            ),
+        });
         await rpc('agent.stop', {});
-    }, [runningIdRef, setAgentActive, setConversations, setWorkingOnThisPage]);
+    }, []);
 
     const createConversation = useCallback(() => {
-        const domain = conversationVaultKey(pageUrlRef.current);
-        const nextRevision = bumpRevision();
-        const current = conversationsRef.current;
+        const store = useAgentSessionStore.getState();
+        const domain = conversationVaultKey(store.pageUrl);
+        const nextRevision = store.bumpRevision();
         const next = emptyConversation(
-            nextConversationTitle(current.map((item) => item.title)),
+            nextConversationTitle(store.conversations.map((item) => item.title)),
             domain ? [domain] : [],
         );
-        const nextConversations = [...current, next];
-        activeIdRef.current = next.id;
-        conversationsRef.current = nextConversations;
-        setActiveId(next.id);
-        setConversations(nextConversations);
-        setView('chat');
+        const nextConversations = [...store.conversations, next];
+        useAgentSessionStore.setState({
+            activeId: next.id,
+            conversations: nextConversations,
+            view: 'chat',
+        });
+        const latest = useAgentSessionStore.getState();
         void rpc('session.saveStore', {
             activeId: next.id,
             conversations: nextConversations,
-            url: pageUrlRef.current,
+            url: latest.pageUrl,
             revision: nextRevision,
-            sessionId: sessionIdRef.current,
-            deletedConversationIds: [...deletedConversationIdsRef.current],
+            sessionId: latest.sessionId,
+            deletedConversationIds: [...latest.deletedConversationIds],
         }).catch(() => {});
-    }, [activeIdRef, bumpRevision, conversationsRef, deletedConversationIdsRef, pageUrlRef, sessionIdRef, setActiveId, setConversations, setView]);
+    }, []);
 
     const openInitialConversation = useCallback(async () => {
-        const current = conversationsRef.current;
+        const store = useAgentSessionStore.getState();
+        const current = store.conversations;
         const recent = latestRecentConversation(current);
         const nextClosedTabIds = new Set(
             current.filter((item) => item.id !== recent?.id).map((item) => item.id),
         );
-        closedTabIdsRef.current = nextClosedTabIds;
-        setClosedTabIds(nextClosedTabIds);
+        useAgentSessionStore.setState({ closedTabIds: nextClosedTabIds });
         if (!recent) {
             await createConversation();
             return;
         }
-        bumpRevision();
-        activeIdRef.current = recent.id;
-        setActiveId(recent.id);
-        setView('chat');
-    }, [
-        activeIdRef,
-        bumpRevision,
-        closedTabIdsRef,
-        conversationsRef,
-        createConversation,
-        setActiveId,
-        setClosedTabIds,
-        setView,
-    ]);
+        store.bumpRevision();
+        useAgentSessionStore.setState({ activeId: recent.id, view: 'chat' });
+    }, [createConversation]);
 
     const selectConversation = useCallback(
         (id: string) => {
-            bumpRevision();
-            setActiveId(id);
-            setView('chat');
+            const store = useAgentSessionStore.getState();
+            const nextRevision = store.bumpRevision();
             // 从历史中打开一个已关闭的标签页 → 重新打开
-            if (closedTabIdsRef.current.has(id)) {
-                const next = new Set(closedTabIdsRef.current);
-                next.delete(id);
-                closedTabIdsRef.current = next;
-                setClosedTabIds(next);
-            }
+            const closedTabIds = store.closedTabIds.has(id)
+                ? (() => {
+                    const next = new Set(store.closedTabIds);
+                    next.delete(id);
+                    return next;
+                })()
+                : store.closedTabIds;
             // 从历史中打开的旧会话也视为"打开"的标签页：触碰 updatedAt 使其进入最近窗口
-            setConversations((current) =>
-                current.some((item) => item.id === id && isRecentConversation(item))
-                    ? current
-                    : current.map((item) =>
-                        item.id === id ? { ...item, updatedAt: Date.now() } : item,
-                    ),
-            );
+            const conversations = store.conversations.some(
+                (item) => item.id === id && isRecentConversation(item),
+            )
+                ? store.conversations
+                : store.conversations.map((item) =>
+                    item.id === id ? { ...item, updatedAt: Date.now() } : item,
+                );
+            useAgentSessionStore.setState({
+                activeId: id,
+                view: 'chat',
+                closedTabIds,
+                conversations,
+            });
+            void nextRevision;
         },
-        [bumpRevision, closedTabIdsRef, setActiveId, setClosedTabIds, setConversations, setView],
+        [],
     );
 
     /** 关闭标签页：仅从标签栏隐藏会话，不删除历史；关闭当前标签时切换到其他打开的标签页 */
     const closeTab = useCallback(
         (id: string) => {
+            const store = useAgentSessionStore.getState();
             const openTabs = () =>
-                conversationsRef.current.filter(
-                    (item) => item.id !== id && isRecentConversation(item) && !closedTabIdsRef.current.has(item.id),
+                store.conversations.filter(
+                    (item) =>
+                        item.id !== id && isRecentConversation(item) && !store.closedTabIds.has(item.id),
                 );
-            if (id === activeIdRef.current) {
+            const patch: {
+                activeId?: string;
+                view?: 'chat';
+                closedTabIds: Set<string>;
+            } = {
+                closedTabIds: (() => {
+                    const next = new Set(store.closedTabIds);
+                    next.add(id);
+                    return next;
+                })(),
+            };
+            if (id === store.activeId) {
                 const remaining = openTabs();
                 if (remaining.length > 0) {
                     const nextId = remaining.at(-1)!.id;
-                    bumpRevision();
-                    activeIdRef.current = nextId;
-                    setActiveId(nextId);
-                    setView('chat');
+                    store.bumpRevision();
+                    patch.activeId = nextId;
+                    patch.view = 'chat';
                 } else {
                     // 没有其他打开的标签页：保留至少一个会话标签，像浏览器一样新建一个
                     void createConversation();
                 }
             }
-            const next = new Set(closedTabIdsRef.current);
-            next.add(id);
-            closedTabIdsRef.current = next;
-            setClosedTabIds(next);
+            useAgentSessionStore.setState(patch);
         },
-        [
-            activeIdRef,
-            bumpRevision,
-            closedTabIdsRef,
-            conversationsRef,
-            createConversation,
-            setActiveId,
-            setClosedTabIds,
-            setView,
-        ],
+        [createConversation],
     );
 
     /** 删除会话：从存储与历史中彻底移除 */
     const deleteConversation = useCallback(
         (id: string) => {
-            bumpRevision();
-            deletedConversationIdsRef.current.add(id);
-            closedTabIdsRef.current.delete(id);
-            setClosedTabIds(new Set(closedTabIdsRef.current));
-            setConversations((current) => {
-                if (current.length <= 1) {
-                    const domain = conversationVaultKey(pageUrlRef.current);
-                    const reset = emptyConversation('会话 1', domain ? [domain] : []);
-                    setActiveId(reset.id);
-                    setView('chat');
-                    return [reset];
-                }
-                const next = current.filter((item) => item.id !== id);
-                if (activeIdRef.current === id) {
-                    setActiveId(next.at(-1)!.id);
-                    setView('chat');
-                }
-                return next;
-            });
+            const store = useAgentSessionStore.getState();
+            store.bumpRevision();
+            store.markConversationDeleted(id);
+            const closedTabIds = new Set(store.closedTabIds);
+            closedTabIds.delete(id);
+            const current = store.conversations;
+            if (current.length <= 1) {
+                const domain = conversationVaultKey(store.pageUrl);
+                const reset = emptyConversation('会话 1', domain ? [domain] : []);
+                useAgentSessionStore.setState({
+                    closedTabIds,
+                    conversations: [reset],
+                    activeId: reset.id,
+                    view: 'chat',
+                });
+                return;
+            }
+            const next = current.filter((item) => item.id !== id);
+            const patch: {
+                closedTabIds: Set<string>;
+                conversations: PageConversation[];
+                activeId?: string;
+                view?: 'chat';
+            } = { closedTabIds, conversations: next };
+            if (store.activeId === id) {
+                patch.activeId = next.at(-1)!.id;
+                patch.view = 'chat';
+            }
+            useAgentSessionStore.setState(patch);
         },
-        [activeIdRef, bumpRevision, closedTabIdsRef, deletedConversationIdsRef, pageUrlRef, setActiveId, setClosedTabIds, setConversations, setView],
+        [],
     );
 
     return {

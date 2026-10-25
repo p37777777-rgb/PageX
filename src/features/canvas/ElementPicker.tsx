@@ -119,27 +119,27 @@ export function ElementPicker({
         >
             {box && (
                 <div
-                    className="pointer-events-none fixed rounded-[3px] border-2 border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(255,255,255,0.55),0_4px_18px_rgba(0,0,0,0.18)]"
+                    className="pointer-events-none fixed border-2 border-ink bg-accent/25"
                     style={{
                         left: box.left,
                         top: box.top,
                         width: box.width,
                         height: box.height,
-                        transition:
-                            'left 160ms cubic-bezier(0.23,1,0.32,1), top 160ms cubic-bezier(0.23,1,0.32,1), width 160ms cubic-bezier(0.23,1,0.32,1), height 160ms cubic-bezier(0.23,1,0.32,1)',
                     }}
                 >
           <span
-              className="absolute left-0 max-w-72 truncate rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground shadow-card"
+              className="fixed max-w-72 truncate bg-accent px-2 py-1 text-[11px] font-medium text-ink"
               style={{
-                  top: box.top >= 30 ? -28 : Math.min(box.height + 4, window.innerHeight - box.top - 24),
+                  left: Math.max(8, Math.min(box.left, window.innerWidth - Math.min(288, window.innerWidth - 16) - 8)),
+                  top: box.top >= 30 ? Math.max(8, box.top - 26) : Math.min(window.innerHeight - 28, box.top + box.height + 4),
+                  maxWidth: Math.min(288, window.innerWidth - 16),
               }}
           >
             {label}
           </span>
                 </div>
             )}
-            <div className="pointer-events-none fixed top-4 left-1/2 -translate-x-1/2 rounded-full border border-line bg-surface/95 px-3 py-1.5 text-[11.5px] text-ink-2 shadow-raised backdrop-blur">
+            <div className="pointer-events-none fixed top-4 left-1/2 max-w-[calc(100vw-32px)] -translate-x-1/2 border border-ink bg-surface px-3 py-1.5 text-[11.5px] text-ink">
                 单击选择元素 · Esc 取消
             </div>
         </div>

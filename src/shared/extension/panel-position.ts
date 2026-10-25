@@ -155,10 +155,5 @@ export function nextPanelResize(
 }
 
 export function isPanelDragTarget(target: EventTarget | null): boolean {
-    return (
-        target instanceof Element &&
-        !target.closest(
-            'button, a, input, textarea, select, [role="switch"], [data-slot="select-trigger"], [data-panel-resize]',
-        )
-    );
+    return target instanceof Element && Boolean(target.closest('[data-panel-drag]'));
 }

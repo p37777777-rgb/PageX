@@ -5,7 +5,6 @@ import { ConversationArchive } from './ConversationArchive';
 import { rpc } from '@/shared/extension/rpc-client';
 import { applyDocumentTheme, resolveThemeClass } from '@/shared/extension/theme';
 import { DEFAULT_SETTINGS, type AgentSettings } from '@/shared/contracts/settings';
-import { BotIcon } from '@/shared/ui/BotIcon';
 //是扩展设置页的根组件：用 URL hash 在「常规」和「聊天记录」两个分区间切换，
 // 分别渲染 SettingsPanel 与 ConversationArchive，
 // 并负责加载/保存设置、同步主题、提供顶栏与侧边导航布局。
@@ -52,14 +51,13 @@ export function OptionsApp() {
 
     return (
         <div className="min-h-screen bg-canvas text-ink">
-            <header className="sticky top-0 z-20 border-b border-line bg-surface/90 backdrop-blur">
+            <div className="h-1 w-full bg-[linear-gradient(90deg,#ff00f0_0_33.33%,#fffa00_33.33%_66.66%,#00ffa2_66.66%)]" aria-hidden />
+            <header className="pagex-industrial-header sticky top-0 z-20">
                 <div className="mx-auto flex h-16 w-full max-w-[1600px] items-center gap-3 px-4 sm:px-6 lg:px-8">
-          <span className="pagex-settings-logo" aria-hidden>
-            <BotIcon size={34} />
-          </span>
+          <span className="pagex-brand" aria-hidden>PX</span>
                     <div className="min-w-0">
-                        <h1 className="text-[15px] font-semibold tracking-[-0.01em]">PageX 设置</h1>
-                        <p className="truncate text-[11.5px] text-ink-3">模型、权限与本地聊天记录</p>
+                        <div className="pagex-eyebrow text-white/65">PAGEX / CONTROL</div>
+                        <h1 className="text-[18px] font-bold tracking-[0.02em]">设置 / 控制台</h1>
                     </div>
                 </div>
             </header>
@@ -76,8 +74,8 @@ export function OptionsApp() {
                                     type="button"
                                     aria-current={active ? 'page' : undefined}
                                     onClick={() => openSection(item.id)}
-                                    className={`flex w-full items-start gap-2.5 rounded-card px-3 py-2.5 text-left transition-colors ${
-                                        active ? 'bg-accent-tint text-ink' : 'text-ink-2 hover:bg-hover hover:text-ink'
+                                    className={`pagex-nav-item flex w-full items-start gap-2.5 px-3 py-3 text-left transition-colors ${
+                                        active ? 'is-current' : ''
                                     }`}
                                 >
                                     <Icon className="mt-0.5 size-4 shrink-0" stroke={1.9} />
@@ -100,8 +98,10 @@ export function OptionsApp() {
                                     配置模型、执行方式、记忆和权限。这些选项与悬浮面板里的快捷设置同步。
                                 </p>
                             </div>
-                            <div className="rounded-window border border-line bg-surface p-4 shadow-card sm:p-6">
-                                <SettingsPanel settings={settings} onChange={setSettings} variant="page" />
+                            <div className="pagex-settings-layout">
+                                <div className="min-w-0">
+                                    <SettingsPanel settings={settings} onChange={setSettings} variant="page" />
+                                </div>
                             </div>
                         </div>
                     ) : (

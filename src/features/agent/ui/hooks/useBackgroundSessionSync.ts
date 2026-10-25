@@ -1,10 +1,10 @@
 //按运行、空闲和页面是否隐藏，向后台要当前标签页的会话。
-//把后台那份正在跑的记录合并进界面，避免本地较新的内容被旧快照盖掉。
-import { useEffect, useState } from 'react';
+//把后台那份正在跑的记录合并进 store，避免本地较新的内容被旧快照盖掉。
+//轮询节奏沿用原逻辑：隐藏慢轮询、运行中快轮询、空闲常规轮询；可见性恢复立即拉一次。
+import { useEffect } from 'react';
 import { rpc } from '@/shared/extension/rpc-client';
 import {
     conversationTabKey,
-    createPageStore,
     mergeConversationStores,
     normalizePageStore,
     restoreConversationStore,
@@ -18,50 +18,12 @@ import {
     shouldRestoreLiveSession,
 } from '@/features/agent/session/session-live';
 import type { PageConversation, SessionContext } from '@/shared/contracts/session';
+import { useAgentSessionStore } from '../store/agent-session-store';
 
-export type SessionSyncState = {
-    conversations: PageConversation[];
-    activeId: string;
-    revision: number;
-    sessionId?: string;
-    readyKey: string | null;
-    restorePanel: boolean;
-    attachKey: number;
-    workingOnThisPage: boolean;
-    agentActive: boolean;
-};
-
-export type SessionSyncRefs = {
-    runningIdRef: React.MutableRefObject<string | null>;
-    activeIdRef: React.MutableRefObject<string>;
-    conversationsRef: React.MutableRefObject<PageConversation[]>;
-    pageUrlRef: React.MutableRefObject<string>;
-    revisionRef: React.MutableRefObject<number>;
-    sessionIdRef: React.MutableRefObject<string | undefined>;
-};
-
-export function useBackgroundSessionSync(
-    vaultKey: string | undefined,
-    pageUrl: string,
-    refs: SessionSyncRefs,
-) {
-    const [conversations, setConversations] = useState<PageConversation[]>(() =>
-        createPageStore(vaultKey).conversations,
-    );
-    const [activeId, setActiveId] = useState(() => createPageStore(vaultKey).activeId);
-    const [revision, setRevision] = useState(() => createPageStore(vaultKey).revision ?? 0);
-    const [sessionId, setSessionId] = useState<string | undefined>();
-    const [readyKey, setReadyKey] = useState<string | null>(null);
-    const [restorePanel, setRestorePanel] = useState(false);
-    const [attachKey, setAttachKey] = useState(0);
-    const [workingOnThisPage, setWorkingOnThisPage] = useState(false);
-    const [agentActive, setAgentActive] = useState(false);
-
-    refs.activeIdRef.current = activeId;
-    refs.conversationsRef.current = conversations;
-    refs.pageUrlRef.current = pageUrl;
-    refs.revisionRef.current = revision;
-    refs.sessionIdRef.current = sessionId;
+export function useBackgroundSessionSync(vaultKey: string | undefined) {
+    //首次渲染前同步水合初始会话，等价于原来的 useState(() => createPageStore(vaultKey))。
+    //此刻 store 还没有订阅者，直接写是安全的；hydrated 标志保证只水合一次。
+    useAgentSessionStore.getState().hydrateInitial(vaultKey);
 
     useEffect(() => {
         let cancelled = false;
@@ -70,86 +32,104 @@ export function useBackgroundSessionSync(
         let timer: number | undefined;
 
         const applyContext = (context: SessionContext, initial: boolean) => {
+            const store = useAgentSessionStore.getState();
             const onThisPage = sessionIsOnTab(context);
-            setWorkingOnThisPage(onThisPage);
-            setAgentActive(Boolean(context.agentActive ?? context.running));
+            const agentActive = Boolean(context.agentActive ?? context.running);
             const contextRevision = context.store?.revision ?? context.revision ?? 0;
 
             if (
                 shouldRestoreLiveSession({
-                    alreadyAttached: Boolean(refs.runningIdRef.current),
-                    attachedConversationId: refs.runningIdRef.current ?? undefined,
+                    alreadyAttached: Boolean(store.runningId),
+                    attachedConversationId: store.runningId ?? undefined,
                     context,
                 })
             ) {
-                const incoming = restoreConversationStore(normalizePageStore(context.store, vaultKey), {
-                    running: true,
-                    conversationId: context.conversationId,
-                });
+                const incoming = restoreConversationStore(
+                    normalizePageStore(context.store, vaultKey),
+                    { running: true, conversationId: context.conversationId },
+                );
                 const local = {
-                    activeId: refs.activeIdRef.current,
-                    conversations: refs.conversationsRef.current,
+                    activeId: store.activeId,
+                    conversations: store.conversations,
                 };
                 const next = hydrated ? mergeConversationStores(local, incoming) : incoming;
-                refs.runningIdRef.current = next.activeId;
-                refs.revisionRef.current = contextRevision;
-                refs.sessionIdRef.current = context.sessionId ?? context.store?.sessionId;
-                setConversations(next.conversations);
-                setActiveId(next.activeId);
-                setRevision(contextRevision);
-                setSessionId(refs.sessionIdRef.current);
-                setRestorePanel(true);
-                if (!initial) setAttachKey((value) => value + 1);
-                setReadyKey(`${conversationTabKey(context.tabId)}:${vaultKey ?? 'unknown'}`);
+                useAgentSessionStore.setState({
+                    workingOnThisPage: onThisPage,
+                    agentActive,
+                    runningId: next.activeId,
+                    revision: contextRevision,
+                    sessionId: context.sessionId ?? context.store?.sessionId,
+                    conversations: next.conversations,
+                    activeId: next.activeId,
+                    restorePanel: true,
+                    attachKey: initial ? store.attachKey : store.attachKey + 1,
+                    readyKey: `${conversationTabKey(context.tabId)}:${vaultKey ?? 'unknown'}`,
+                });
                 hydrated = true;
                 return;
             }
 
-            if (hydrated && context.store && contextRevision > refs.revisionRef.current) {
-                const next = restoreConversationStore(normalizePageStore(context.store, vaultKey), {
-                    running: context.running,
-                    conversationId: context.conversationId,
+            if (hydrated && context.store && contextRevision > store.revision) {
+                const next = restoreConversationStore(
+                    normalizePageStore(context.store, vaultKey),
+                    { running: context.running, conversationId: context.conversationId },
+                );
+                useAgentSessionStore.setState({
+                    workingOnThisPage: onThisPage,
+                    agentActive,
+                    revision: contextRevision,
+                    sessionId: context.sessionId ?? context.store.sessionId,
+                    runningId: context.running ? next.activeId : store.runningId,
+                    conversations: next.conversations,
+                    activeId: next.activeId,
                 });
-                refs.revisionRef.current = contextRevision;
-                refs.sessionIdRef.current = context.sessionId ?? context.store.sessionId;
-                if (context.running) refs.runningIdRef.current = next.activeId;
-                setConversations(next.conversations);
-                setActiveId(next.activeId);
-                setRevision(contextRevision);
-                setSessionId(refs.sessionIdRef.current);
                 return;
             }
 
-            if (!context.running && refs.runningIdRef.current) {
-                refs.runningIdRef.current = null;
-                setConversations((current) =>
-                    current.map((item) => (item.running ? settleFinishedConversation(item) : item)),
+            const patch: {
+                workingOnThisPage: boolean;
+                agentActive: boolean;
+                runningId?: string | null;
+                revision?: number;
+                sessionId?: string | undefined;
+                conversations?: PageConversation[];
+                activeId?: string;
+                restorePanel?: boolean;
+                readyKey?: string;
+            } = { workingOnThisPage: onThisPage, agentActive };
+
+            if (!context.running && store.runningId) {
+                patch.runningId = null;
+                patch.conversations = store.conversations.map((item) =>
+                    item.running ? settleFinishedConversation(item) : item,
                 );
             }
 
             if (!hydrated) {
-                const next = restoreConversationStore(normalizePageStore(context.store, vaultKey), {
-                    running: context.running,
-                    conversationId: context.conversationId,
-                });
-                if (context.running) refs.runningIdRef.current = next.activeId;
-                refs.revisionRef.current = contextRevision;
-                refs.sessionIdRef.current = context.sessionId ?? context.store?.sessionId;
-                setConversations(next.conversations);
-                setActiveId(next.activeId);
-                setRevision(contextRevision);
-                setSessionId(refs.sessionIdRef.current);
-                setRestorePanel(Boolean(context.panelOpen || context.running));
-                setReadyKey(`${conversationTabKey(context.tabId)}:${vaultKey ?? 'unknown'}`);
+                const next = restoreConversationStore(
+                    normalizePageStore(context.store, vaultKey),
+                    { running: context.running, conversationId: context.conversationId },
+                );
+                patch.runningId = context.running ? next.activeId : null;
+                patch.revision = contextRevision;
+                patch.sessionId = context.sessionId ?? context.store?.sessionId;
+                patch.conversations = next.conversations;
+                patch.activeId = next.activeId;
+                patch.restorePanel = Boolean(context.panelOpen || context.running);
+                patch.readyKey = `${conversationTabKey(context.tabId)}:${vaultKey ?? 'unknown'}`;
                 hydrated = true;
             }
+
+            useAgentSessionStore.setState(patch);
         };
 
         const pull = async (initial: boolean) => {
             if (pulling) return;
             pulling = true;
             try {
-                const value = await rpc('session.context', { url: refs.pageUrlRef.current });
+                const value = await rpc('session.context', {
+                    url: useAgentSessionStore.getState().pageUrl,
+                });
                 if (cancelled) return;
                 applyContext(value as SessionContext, initial);
             } catch {
@@ -164,7 +144,7 @@ export function useBackgroundSessionSync(
             const delay =
                 document.visibilityState !== 'visible'
                     ? SESSION_HIDDEN_POLL_MS
-                    : refs.runningIdRef.current
+                    : useAgentSessionStore.getState().runningId
                         ? SESSION_ACTIVE_POLL_MS
                         : SESSION_IDLE_POLL_MS;
             timer = window.setTimeout(async () => {
@@ -189,22 +169,4 @@ export function useBackgroundSessionSync(
             window.removeEventListener('pageshow', onVisible);
         };
     }, [vaultKey]);
-
-    return {
-        conversations,
-        setConversations,
-        activeId,
-        setActiveId,
-        revision,
-        setRevision,
-        sessionId,
-        setSessionId,
-        readyKey,
-        restorePanel,
-        attachKey,
-        workingOnThisPage,
-        setWorkingOnThisPage,
-        agentActive,
-        setAgentActive,
-    };
 }

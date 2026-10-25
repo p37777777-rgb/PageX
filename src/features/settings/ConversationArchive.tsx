@@ -344,9 +344,12 @@ export function ConversationArchive() {
                     {loading && !items.length ? (
                         <p className="px-4 py-16 text-center text-[13px] text-ink-3">正在读取本地会话…</p>
                     ) : groups.length === 0 ? (
-                        <p className="px-4 py-16 text-center text-[13px] text-ink-3">
-                            {items.length ? '没有匹配的会话' : '还没有可导出的会话。在网页中与 PageX 对话后，记录会按站点保存在本地。'}
-                        </p>
+                        <div className="pagex-empty-state">
+                            <div className="pagex-eyebrow">ARCHIVE / 记录</div>
+                            <p className="mt-1 text-[13px] text-ink-2">
+                                {items.length ? '没有匹配的会话' : '还没有可导出的会话。在网页中与 PageX 对话后，记录会按站点保存在本地。'}
+                            </p>
+                        </div>
                     ) : (
                         <div className="max-h-[70vh] overflow-y-auto p-2">
                             {groups.map((group) => (
