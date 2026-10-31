@@ -44,15 +44,49 @@ export function resolveModelBaseURL(settings: AgentSettings): string | undefined
 
 const DEFAULT_MAX_RETRIES = 3;
 
-export function createChatModel(settings: AgentSettings, secrets: SecretMap) {
-    const { provider, model } = settings.model;
+/** 压缩摘要的输出上限：提示词要求不超过 1500 字，留出余量。 */
+const SUMMARY_MAX_OUTPUT_TOKENS = 4_096;
+/** 压缩有自己的回退链，SDK 层少重试，失败时能尽快换下一个模型。 */
+const SUMMARY_MAX_RETRIES = 1;
+
+/**
+ * OpenAI 兼容端点上关闭思考的请求参数。只列出服务商文档里明确的写法；
+ * Anthropic 默认不思考，其余服务商没有统一开关，不发送未知参数以免请求被拒。
+ */
+const THINKING_OFF_KWARGS: Partial<Record<ProviderId, Record<string, unknown>>> = {
+    deepseek: { thinking: { type: 'disabled' } },
+    zhipu: { thinking: { type: 'disabled' } },
+    ark: { thinking: { type: 'disabled' } },
+    qwen: { enable_thinking: false },
+    siliconflow: { enable_thinking: false },
+};
+
+export function providerHasThinkingSwitch(provider: ProviderId): boolean {
+    return provider in THINKING_OFF_KWARGS;
+}
+
+export type ChatModelOptions = {
+    /** chat：对话主模型；summary：前文压缩，温度 0、非流式、限制输出长度。 */
+    purpose?: 'chat' | 'summary';
+    /** 覆盖设置里的模型 ID，服务商、地址和密钥仍沿用设置。 */
+    model?: string;
+    /** summary 时是否发送关闭思考的参数，默认发送；端点不认这个参数时可以关掉重试。 */
+    disableThinking?: boolean;
+};
+
+export function createChatModel(settings: AgentSettings, secrets: SecretMap, options: ChatModelOptions = {}) {
+    const { provider } = settings.model;
+    const model = options.model ?? settings.model.model;
+    const summary = options.purpose === 'summary';
+    const maxRetries = summary ? SUMMARY_MAX_RETRIES : DEFAULT_MAX_RETRIES;
 
     if (provider === 'anthropic') {
         return new ChatAnthropic({
             apiKey: resolveApiKey(provider, secrets),
             model,
             temperature: 0,
-            maxRetries: DEFAULT_MAX_RETRIES,
+            maxRetries,
+            ...(summary ? { maxTokens: SUMMARY_MAX_OUTPUT_TOKENS } : {}),
         });
     }
     if (provider === 'google') {
@@ -60,7 +94,8 @@ export function createChatModel(settings: AgentSettings, secrets: SecretMap) {
             apiKey: resolveApiKey(provider, secrets),
             model,
             temperature: 0,
-            maxRetries: DEFAULT_MAX_RETRIES,
+            maxRetries,
+            ...(summary ? { maxOutputTokens: SUMMARY_MAX_OUTPUT_TOKENS } : {}),
         });
     }
 
@@ -68,25 +103,28 @@ export function createChatModel(settings: AgentSettings, secrets: SecretMap) {
     const protocol = resolveApiProtocol(settings);
     // Ollama 本地端点无需密钥，任意占位即可
     const apiKey = provider === 'ollama' ? 'ollama' : resolveApiKey(provider, secrets);
+    const modelKwargs = summary
+        ? options.disableThinking === false ? undefined : THINKING_OFF_KWARGS[provider]
+        : chatModelKwargs(provider, protocol);
     return new ChatOpenAI({
         apiKey,
         model,
         temperature: 0,
-        streaming: true,
-        maxRetries: DEFAULT_MAX_RETRIES,
+        streaming: !summary,
+        maxRetries,
         useResponsesApi: protocol === 'responses',
-        ...(provider === 'deepseek'
-            ? protocol === 'responses'
-                ? { modelKwargs: { reasoning: { effort: 'high' } } }
-                : {
-                    modelKwargs: {
-                        thinking: { type: 'enabled' },
-                        reasoning_effort: 'high',
-                    },
-                }
-            : {}),
+        ...(summary ? { maxTokens: SUMMARY_MAX_OUTPUT_TOKENS } : {}),
+        ...(modelKwargs ? { modelKwargs } : {}),
         configuration: baseURL ? { baseURL } : undefined,
     });
+}
+
+/** 对话主模型的额外参数：DeepSeek 默认开启高强度思考，让思考过程显示在界面上。 */
+function chatModelKwargs(provider: ProviderId, protocol: ApiProtocol): Record<string, unknown> | undefined {
+    if (provider !== 'deepseek') return undefined;
+    return protocol === 'responses'
+        ? { reasoning: { effort: 'high' } }
+        : { thinking: { type: 'enabled' }, reasoning_effort: 'high' };
 }
 
 export async function testModelConnection(settings: AgentSettings, secrets: SecretMap) {

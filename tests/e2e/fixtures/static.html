@@ -2,23 +2,165 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <title>PageX Fixture</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>深空观测站 · 深空中继台</title>
+    <style>
+      :root {
+        --void: #070b18;
+        --nebula: #101a33;
+        --star: #e8eeff;
+        --signal: #4fd1c5;
+        --beacon: #f6ad55;
+      }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(1.5px 1.5px at 12% 22%, #ffffff 99%, transparent),
+          radial-gradient(1px 1px at 68% 14%, #cfe4ff 99%, transparent),
+          radial-gradient(2px 2px at 84% 58%, #ffe9c9 99%, transparent),
+          radial-gradient(1px 1px at 32% 76%, #ffffff 99%, transparent),
+          radial-gradient(1.5px 1.5px at 52% 42%, #b9d4ff 99%, transparent),
+          radial-gradient(1px 1px at 90% 82%, #ffffff 99%, transparent),
+          radial-gradient(circle at 20% 85%, rgba(79, 209, 197, 0.12), transparent 45%),
+          radial-gradient(circle at 80% 10%, rgba(246, 173, 85, 0.1), transparent 40%),
+          linear-gradient(160deg, var(--nebula), var(--void) 65%);
+        color: var(--star);
+        font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+        letter-spacing: 0.04em;
+      }
+      main {
+        width: min(520px, 90vw);
+        border: 1px solid rgba(232, 238, 255, 0.16);
+        border-radius: 18px;
+        background: rgba(16, 26, 51, 0.72);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+        padding: 40px 36px 32px;
+        text-align: center;
+      }
+      header p.eyebrow {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: var(--beacon);
+        letter-spacing: 0.32em;
+      }
+      h1 {
+        margin-top: 10px;
+        font-size: 26px;
+        font-weight: 600;
+      }
+      header p.intro {
+        margin-top: 12px;
+        font-size: 13px;
+        line-height: 1.8;
+        color: rgba(232, 238, 255, 0.66);
+      }
+      ul.orbits {
+        list-style: none;
+        display: flex;
+        justify-content: center;
+        gap: 14px;
+        margin: 22px 0 26px;
+        font-size: 12px;
+        color: rgba(232, 238, 255, 0.55);
+      }
+      ul.orbits li {
+        border: 1px solid rgba(232, 238, 255, 0.14);
+        border-radius: 999px;
+        padding: 4px 12px;
+      }
+      .console {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-width: 360px;
+        margin: 0 auto;
+      }
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-size: 12px;
+        text-align: left;
+        color: rgba(232, 238, 255, 0.72);
+      }
+      input {
+        height: 40px;
+        border-radius: 10px;
+        border: 1px solid rgba(232, 238, 255, 0.22);
+        background: rgba(7, 11, 24, 0.85);
+        color: var(--star);
+        padding: 0 14px;
+        font: inherit;
+        font-size: 14px;
+        outline: none;
+      }
+      input:focus { border-color: var(--signal); }
+      button {
+        height: 42px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(120deg, var(--signal), #2c9d94);
+        color: #05201d;
+        font: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        cursor: pointer;
+      }
+      button:hover { filter: brightness(1.08); }
+      output {
+        display: block;
+        min-height: 44px;
+        border: 1px dashed rgba(79, 209, 197, 0.5);
+        border-radius: 10px;
+        background: rgba(79, 209, 197, 0.07);
+        padding: 10px 14px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--signal);
+      }
+      output:empty::before {
+        content: "—— 等待下一次信号发射 ——";
+        color: rgba(232, 238, 255, 0.35);
+      }
+      footer {
+        margin-top: 26px;
+        font-size: 11px;
+        color: rgba(232, 238, 255, 0.34);
+      }
+    </style>
   </head>
   <body>
-    <h1>示例页面</h1>
-    <p>这是一个用于扩展验收的静态页。</p>
-    <form>
-      <label>
-        名称
-        <input name="name" placeholder="输入名称" />
-      </label>
-      <button type="button" id="hello">打招呼</button>
-    </form>
-    <div id="out"></div>
+    <main>
+      <header>
+        <p class="eyebrow">Deep Space Relay · KX-09</p>
+        <h1>深空观测站中继台</h1>
+        <p class="intro">在遥远的悬臂边缘，你的每一句问候都会被翻译成引力波，送往Stillpunkt星区的下一座灯塔。</p>
+      </header>
+      <ul class="orbits">
+        <li>轨道甲 · 蓝砂星</li>
+        <li>轨道乙 · 静脉环带</li>
+        <li>轨道丙 · 曙光残骸</li>
+      </ul>
+      <section class="console">
+        <label>
+          观测者代号
+          <input name="name" placeholder="例如：织女四号" />
+        </label>
+        <button type="button" id="transmit">发射问候信号</button>
+        <output id="signal-out" role="status"></output>
+      </section>
+      <footer>深空网络频道 7 · 全时段值守</footer>
+    </main>
     <script>
-      document.getElementById('hello').addEventListener('click', () => {
-        const name = document.querySelector('input[name="name"]').value || '世界';
-        document.getElementById('out').textContent = `你好，${name}`;
+      document.getElementById('transmit').addEventListener('click', () => {
+        const code = document.querySelector('input[name="name"]').value.trim();
+        const callsign = code || '旅行者';
+        document.getElementById('signal-out').textContent = `信号收到，${callsign}！灯塔已为你点亮。`;
       });
     </script>
   </body>

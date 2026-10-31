@@ -1,0 +1,57 @@
+/*
+ * 凌越航空 · 智慧运行平台 全局视觉基线。
+ * 深海军蓝导航栏 + 青蓝主色，覆盖 Element Plus 默认色板。
+ */
+:root {
+  --ops-navy: #0b1a2e;
+  --ops-navy-deep: #081320;
+  --ops-navy-soft: #13273f;
+  --ops-rail-text: #8ba3bf;
+  --ops-rail-text-strong: #e8f0f8;
+  --ops-cyan: #2dd4ee;
+  --ops-ink: #1c2b3a;
+  --ops-canvas: #f2f5f9;
+
+  --el-color-primary: #0e7490;
+  --el-color-primary-light-3: #4599ad;
+  --el-color-primary-light-5: #7fb8c6;
+  --el-color-primary-light-7: #b7d6df;
+  --el-color-primary-light-8: #d3e6ec;
+  --el-color-primary-light-9: #e9f3f6;
+  --el-color-primary-dark-2: #0a5b72;
+  --el-border-radius-base: 6px;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'HarmonyOS Sans SC',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  color: var(--ops-ink);
+  background: var(--ops-canvas);
+  -webkit-font-smoothing: antialiased;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(14, 116, 144, 0.28);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
