@@ -306,6 +306,7 @@ export const rpcSchemas = {
     'memory.secret.clear': z.object({}),
     'memory.secret.has': z.object({}),
     'memory.test': z.object({}),
+    'compression.test': z.object({}),
     'agent.start': z.object({
         prompt: z.string().min(1),
         context: z.string().optional(),

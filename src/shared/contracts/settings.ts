@@ -30,6 +30,44 @@ export type MemorySettings = {
     rerankerModel: string;
 };
 
+/** 前文压缩：上下文超过阈值时，用模型把早期消息总结成一段摘要。 */
+export type CompressionSettings = {
+    enabled: boolean;
+    /** 按服务商记录用户指定的压缩模型 ID；留空表示自动选择该服务商的廉价模型。 */
+    models: Partial<Record<ProviderId, string>>;
+    /** 估算上下文超过这个 token 数时触发压缩。 */
+    triggerTokens: number;
+};
+
+/** 设置页“测试压缩模型”的结果；fallback 表示首选模型不可用、实际由当前对话模型完成。 */
+export type CompressionTestResult = {
+    ok: boolean;
+    model?: string;
+    fallback?: boolean;
+    errors?: string[];
+};
+
+/** 各服务商用于前文压缩的廉价模型；没有列出的服务商直接用当前对话模型压缩。 */
+export const LIGHT_MODELS: Partial<Record<ProviderId, string>> = {
+    openai: 'gpt-6-luna',
+    anthropic: 'claude-haiku-5-5',
+    google: 'gemini-3.5-flash-lite',
+    deepseek: 'deepseek-flash',
+    zhipu: 'glm-5.3-flash',
+    qwen: 'qwen3.8-flash',
+    xai: 'grok-4.3',
+};
+
+export function defaultCompressionModel(provider: ProviderId): string | undefined {
+    return LIGHT_MODELS[provider];
+}
+
+export const COMPRESSION_TRIGGER_LIMITS = {
+    min: 16_000,
+    max: 1_000_000,
+    default: 64_000,
+} as const;
+
 export type ModelSettings = {
     provider: ProviderId;
     model: string;
@@ -279,6 +317,7 @@ export type AgentSettings = {
     /** 按服务商记住上次的模型 / URL / 协议，切换回来时恢复而不是回到预设。 */
     providerProfiles: Partial<Record<ProviderId, ProviderProfile>>;
     memory: MemorySettings;
+    compression: CompressionSettings;
     executionMode: ExecutionMode;
     allowCrossOrigin: boolean;
     captureScreenshots: boolean;
@@ -290,11 +329,38 @@ export type AgentSettings = {
 };
 
 //?model/memory 被 Omit 掉后用更细的局部类型重新定义（可以只改模型里的某个字段）。
-export type AgentSettingsPatch = Partial<Omit<AgentSettings, 'model' | 'memory' | 'providerProfiles'>> & {
+export type AgentSettingsPatch = Partial<Omit<AgentSettings, 'model' | 'memory' | 'compression' | 'providerProfiles'>> & {
     model?: Partial<ModelSettings>;
     memory?: Partial<MemorySettings>;
+    compression?: Partial<CompressionSettings>;
     providerProfiles?: AgentSettings['providerProfiles'];
 };
+
+/** 清洗压缩设置：未知服务商、空模型名和越界阈值都回落到安全值，保证旧存储或坏数据不会让运行时出错。 */
+export function normalizeCompressionSettings(value: unknown): CompressionSettings {
+    const defaults = DEFAULT_SETTINGS.compression;
+    const raw = value && typeof value === 'object' ? (value as Partial<Record<keyof CompressionSettings, unknown>>) : {};
+    const models: Partial<Record<ProviderId, string>> = {};
+    if (raw.models && typeof raw.models === 'object') {
+        for (const [provider, model] of Object.entries(raw.models as Record<string, unknown>)) {
+            if (!(PROVIDER_IDS as readonly string[]).includes(provider)) continue;
+            if (typeof model !== 'string' || !model.trim()) continue;
+            models[provider as ProviderId] = model.trim();
+        }
+    }
+    return {
+        enabled: typeof raw.enabled === 'boolean' ? raw.enabled : defaults.enabled,
+        models,
+        triggerTokens: typeof raw.triggerTokens === 'number'
+            ? clampCompressionTrigger(raw.triggerTokens)
+            : defaults.triggerTokens,
+    };
+}
+
+export function clampCompressionTrigger(value: number): number {
+    if (!Number.isFinite(value)) return COMPRESSION_TRIGGER_LIMITS.default;
+    return Math.min(COMPRESSION_TRIGGER_LIMITS.max, Math.max(COMPRESSION_TRIGGER_LIMITS.min, Math.round(value)));
+}
 //把当前模型设置「快照」成 profile，用于切换时记忆。
 export function snapshotProviderProfile(model: ModelSettings): ProviderProfile {
     const profile: ProviderProfile = {
@@ -362,6 +428,7 @@ export function applySettingsPatch(current: AgentSettings, patch: AgentSettingsP
         ...patch,
         model,
         memory: { ...current.memory, ...patch.memory },
+        compression: normalizeCompressionSettings({ ...current.compression, ...patch.compression }),
         providerProfiles: profiles,
     };
 }
@@ -390,6 +457,11 @@ export const DEFAULT_SETTINGS: AgentSettings = {
         embeddingModel: 'jina-embeddings-v5-text-small',
         rerankerEndpoint: 'https://api.jina.ai/v1/rerank',
         rerankerModel: 'jina-reranker-v3.5',
+    },
+    compression: {
+        enabled: true,
+        models: {},
+        triggerTokens: COMPRESSION_TRIGGER_LIMITS.default,
     },
     executionMode: 'dom',
     allowCrossOrigin: false,

@@ -28,6 +28,7 @@ import {
     type PermissionState,
     type ProviderId,
 } from '@/shared/contracts/settings';
+import { CompressionSettingsSection } from './CompressionSettingsSection';
 import { MemorySettingsSection } from './MemorySettingsSection';
 import { openDetailedSettings } from './open-options';
 //综合设置面板：以 patch→settings.set 为统一保存通道，
@@ -485,6 +486,8 @@ export function SettingsPanel({
                     onCheckedChange={(allowCrossOrigin) => void patch({ allowCrossOrigin })}
                 />
             </section>
+
+            <CompressionSettingsSection settings={settings} onPatch={patch} />
 
             <MemorySettingsSection settings={settings} onPatch={patch} />
 

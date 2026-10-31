@@ -1,8 +1,8 @@
 {
-  "name": "pagex-web-playground",
+  "name": "aero-ops-playground",
   "private": true,
   "version": "0.0.0",
-  "description": "PageX Web 演练场",
+  "description": "凌越航空运行平台演练场",
   "type": "module",
   "scripts": {
     "dev": "vite",

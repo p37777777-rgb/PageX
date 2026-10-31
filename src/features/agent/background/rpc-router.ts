@@ -42,6 +42,7 @@ import {
     insertText,
 } from '@/shared/browser/cdp';
 import { testModelConnection } from '@/features/agent/runtime/models';
+import { testCompressionModel } from '@/features/agent/runtime/compression';
 import { fetchProviderModels } from '@/features/settings/model-list';
 import { syncMcpServers } from '@/features/mcp/background/mcp-manager';
 import { saveMcpConfig } from '@/shared/storage/storage';
@@ -273,6 +274,8 @@ export async function handleRpc(name: RpcName, payload: unknown, senderTabId?: n
             return { present: Boolean(await loadMemorySecret()) };
         case 'memory.test':
             return testMemoryConnection();
+        case 'compression.test':
+            return testCompressionModel(settings, await loadSecrets());
         case 'agent.start': {
             const data = parseRpcPayload('agent.start', payload);
             return startAgent(

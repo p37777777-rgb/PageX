@@ -102,11 +102,22 @@ export function interpretStreamChunk(chunk: unknown, state?: StreamToolState): A
     }
     if (mode === 'updates') {
         state?.pending.clear();
-        collectFromUnknown(data, events, { tokens: false, tools: true });
+        collectFromUnknown(withoutBeforeModelUpdates(data), events, { tokens: false, tools: true });
         return events;
     }
     collectFromUnknown(data, events, { tokens: true, tools: true }, state);
     return events;
+}
+
+/**
+ * 中间层 beforeModel 节点（如前文压缩）会重写整段消息，其中的旧工具结果不是新事件；
+ * 如果照常解析，已完成的工具会被再次标记完成并刷新耗时。
+ */
+function withoutBeforeModelUpdates(data: unknown): unknown {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return data;
+    return Object.fromEntries(
+        Object.entries(data as Record<string, unknown>).filter(([node]) => !node.endsWith('.before_model')),
+    );
 }
 
 function unwrapStreamChunk(chunk: unknown): { mode?: string; data: unknown } {

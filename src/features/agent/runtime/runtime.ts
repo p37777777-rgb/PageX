@@ -21,7 +21,8 @@ import {
     modelUserContent,
     toModelMessages,
 } from '@/features/agent/session/messages';
-import { emptyTurnUsage, preferRicherUsage, withTurnTiming } from './usage';
+import { emptyTurnUsage, extractTurnUsage, mergeTurnUsage, preferRicherUsage, withTurnTiming } from './usage';
+import { buildSummaryCandidates, createCompressionMiddleware } from './compression';
 import type { AgentEvent } from '@/shared/contracts/agent';
 import type { AgentSettings } from '@/shared/contracts/settings';
 import type { ChatMessage, TaskRow, UserBadge, UserReference } from '@/shared/contracts/session-messages';
@@ -93,11 +94,26 @@ export async function runAgent(options: {
         options.emit({ type: 'usage', usage });
     };
 
+    const compression = settings.compression.enabled
+        ? createCompressionMiddleware({
+            triggerTokens: settings.compression.triggerTokens,
+            getCandidates: () => buildSummaryCandidates(settings, secrets),
+            signal: options.signal,
+            onStatus: (text) => options.emit({ type: 'thinking', text }),
+            onSummary: ({ response }) => {
+                const extracted = extractTurnUsage(response);
+                if (!extracted) return;
+                safety.usage.tokens = mergeTurnUsage(safety.usage.tokens, extracted);
+                emitUsage();
+            },
+        })
+        : undefined;
+
     const agent = createAgent({
         model,
         tools,
         systemPrompt: buildSystemPrompt(undefined, settings.memory.enabled),
-        middleware: [safety.middleware],
+        middleware: compression ? [compression, safety.middleware] : [safety.middleware],
     });
     const tasks: TaskRow[] = [];
     const recursionLimit = 500;

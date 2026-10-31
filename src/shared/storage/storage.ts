@@ -22,6 +22,7 @@ import {
 import {
     applySettingsPatch,
     DEFAULT_SETTINGS,
+    normalizeCompressionSettings,
     PROVIDER_IDS,
     snapshotProviderProfile,
     type AgentSettings,
@@ -321,6 +322,7 @@ export async function loadSettings(): Promise<AgentSettings> {
         ...stored,
         model: { ...DEFAULT_SETTINGS.model, ...stored.model },
         memory: { ...DEFAULT_SETTINGS.memory, ...stored.memory },
+        compression: normalizeCompressionSettings(stored.compression),
         providerProfiles: { ...DEFAULT_SETTINGS.providerProfiles, ...stored.providerProfiles },
     };
     // @langchain/openai 1.5 only recognizes OpenAI reasoning-summary events,

@@ -1,154 +1,259 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Expand } from '@element-plus/icons-vue'
-import SceneTaskPanel from './components/SceneTaskPanel.vue'
-import SceneVerifyDock from './components/SceneVerifyDock.vue'
-import { scenes } from './scenes'
+import { Promotion } from '@element-plus/icons-vue'
+import BriefPanel from './shell/BriefPanel.vue'
+import InspectorPanel from './shell/InspectorPanel.vue'
+import { modules } from './modules/registry'
 
 const route = useRoute()
 const router = useRouter()
-const menuOpen = ref(false)
+
 const current = computed(
+  () => modules.find((module) => module.id === route.meta.moduleId) ?? modules[0],
+)
+
+const isLedger = computed(() => route.name === 'fare-audit-ledger')
+const isFullBleed = computed(() => current.value.fullBleed === true)
+
+const dismissedBriefs = ref<Record<string, boolean>>({})
+const briefVisible = computed(
   () =>
-    scenes.find((scene) => scene.id === route.meta.sceneId) ?? scenes[0],
+    !isLedger.value &&
+    current.value.steps.length > 0 &&
+    !dismissedBriefs.value[current.value.id],
 )
 
-const flushScenes = new Set([
-  'devops',
-  'kanban',
-  'reconcile',
-  'audit-safety',
-  'bi-builder',
-])
-const isStatement = computed(() => route.name === 'reconcile-statement')
-const isFlush = computed(
-  () => isStatement.value || flushScenes.has(String(current.value.id)),
-)
-
-const closedTasks = ref<Record<string, boolean>>({})
-const taskVisible = computed(
-  () =>
-    !isStatement.value &&
-    current.value.task.length > 0 &&
-    !closedTasks.value[current.value.id],
-)
-
-function onSelect(id: string) {
-  router.push({ name: id })
-  menuOpen.value = false
+function openModule(id: string) {
+  router.push(`/${id}`)
 }
 
-function closeTask() {
-  closedTasks.value[current.value.id] = true
+function dismissBrief() {
+  dismissedBriefs.value[current.value.id] = true
 }
 </script>
 
 <template>
-  <el-container class="app-shell">
-    <el-header v-if="!isStatement" class="header" height="auto">
-      <button type="button" class="menu-trigger" aria-label="打开菜单" @click="menuOpen = true">
-        <el-icon :size="18"><Expand /></el-icon>
-      </button>
-      <div class="heading">
-        <h1>{{ current.title }}</h1>
-        <p>{{ current.description }}</p>
+  <div class="ops-shell">
+    <aside class="rail">
+      <div class="brand">
+        <span class="brand-badge">
+          <el-icon :size="17"><Promotion /></el-icon>
+        </span>
+        <div class="brand-copy">
+          <strong>凌越航空</strong>
+          <small>智慧运行平台</small>
+        </div>
       </div>
-    </el-header>
-    <el-main class="main" :class="{ 'is-flush': isFlush }">
-      <router-view />
-    </el-main>
-  </el-container>
 
-  <SceneTaskPanel
-    v-if="taskVisible"
-    :steps="current.task"
-    :prompt="current.prompt"
-    @close="closeTask"
-  />
+      <nav class="rail-nav">
+        <button
+          v-for="module in modules"
+          :key="module.id"
+          type="button"
+          class="rail-item"
+          :class="{ active: current.id === module.id }"
+          @click="openModule(module.id)"
+        >
+          <el-icon :size="16">
+            <component :is="module.icon" />
+          </el-icon>
+          <span>{{ module.title }}</span>
+        </button>
+      </nav>
 
-  <el-drawer
-    v-model="menuOpen"
-    direction="ltr"
-    size="280px"
-    :with-header="false"
-    class="nav-drawer"
-  >
-    <div class="brand">
-      <div class="brand-title">星澜工作台</div>
-      <div class="brand-sub">v2.4.1</div>
+      <div class="rail-foot">
+        <InspectorPanel />
+        <p class="rail-meta">v5.2.0 · build 3187</p>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="module-bar">
+        <div class="module-copy">
+          <h2>{{ current.title }}</h2>
+          <p>{{ current.blurb }}</p>
+        </div>
+        <button
+          v-if="!briefVisible && current.steps.length > 0 && !isLedger"
+          type="button"
+          class="brief-reopen"
+          @click="dismissedBriefs[current.id] = false"
+        >
+          重新打开任务简报
+        </button>
+      </header>
+
+      <main class="stage" :class="{ flush: isFullBleed }">
+        <router-view />
+      </main>
     </div>
-    <el-menu :default-active="current.id" class="scene-menu" @select="onSelect">
-      <el-menu-item v-for="scene in scenes" :key="scene.id" :index="scene.id">
-        <el-icon>
-          <component :is="scene.icon" />
-        </el-icon>
-        <span>{{ scene.title }}</span>
-      </el-menu-item>
-    </el-menu>
-    <SceneVerifyDock :scene-id="current.id" />
-  </el-drawer>
+
+    <BriefPanel
+      v-if="briefVisible"
+      :steps="current.steps"
+      :prompt="current.prompt"
+      @close="dismissBrief"
+    />
+  </div>
 </template>
 
 <style scoped>
-.app-shell {
+.ops-shell {
+  display: flex;
   height: 100%;
 }
 
-.header {
+.rail {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--el-border-color-light);
-  background: var(--el-bg-color);
+  flex-direction: column;
+  flex: none;
+  width: 224px;
+  background: linear-gradient(180deg, var(--ops-navy) 0%, var(--ops-navy-deep) 100%);
 }
 
-.menu-trigger {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 16px 14px;
+}
+
+.brand-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: none;
-  width: 38px;
-  height: 38px;
-  border: 1px solid var(--el-border-color);
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
-  background: var(--el-bg-color);
-  color: var(--el-text-color-primary);
-  cursor: pointer;
-  transition: border-color 0.2s;
+  background: rgba(45, 212, 238, 0.14);
+  color: var(--ops-cyan);
 }
 
-.menu-trigger:hover {
-  border-color: var(--el-color-primary);
-  color: var(--el-color-primary);
-}
-
-.heading {
+.brand-copy {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  line-height: 1.35;
 }
 
-.heading h1 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--el-text-color-primary);
+.brand-copy strong {
+  color: var(--ops-rail-text-strong);
+  font-size: 15px;
+  letter-spacing: 1px;
 }
 
-.heading p {
-  margin: 0;
+.brand-copy small {
+  color: var(--ops-rail-text);
+  font-size: 11px;
+}
+
+.rail-nav {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ops-rail-text);
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
-.main {
-  background: var(--el-fill-color-light);
+.rail-item:hover {
+  background: rgba(139, 163, 191, 0.12);
+  color: var(--ops-rail-text-strong);
 }
 
-.main.is-flush {
+.rail-item.active {
+  background: rgba(45, 212, 238, 0.13);
+  color: var(--ops-cyan);
+  box-shadow: inset 2.5px 0 0 var(--ops-cyan);
+}
+
+.rail-foot {
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(139, 163, 191, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rail-meta {
+  margin: 0;
+  color: #4d647f;
+  font-size: 10.5px;
+  letter-spacing: 0.5px;
+}
+
+.workspace {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.module-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 26px;
+  background: #fff;
+  border-bottom: 1px solid #e4ebf1;
+}
+
+.module-copy h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ops-ink);
+}
+
+.module-copy p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: #6b7f92;
+}
+
+.brief-reopen {
+  flex: none;
+  padding: 5px 12px;
+  border: 1px solid rgba(14, 116, 144, 0.3);
+  border-radius: 999px;
+  background: #fff;
+  color: #0e7490;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.brief-reopen:hover {
+  background: #e9f3f6;
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 26px;
+}
+
+.stage.flush {
   padding: 0;
   overflow: hidden;
   display: flex;
@@ -156,40 +261,8 @@ function closeTask() {
   background: #fff;
 }
 
-.main.is-flush > * {
+.stage.flush > :deep(*) {
   flex: 1;
   min-height: 0;
-}
-</style>
-
-<style>
-.nav-drawer .el-drawer__body {
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.nav-drawer .brand {
-  padding: 22px 20px 14px;
-  border-bottom: 1px solid var(--el-border-color-lighter);
-}
-
-.nav-drawer .brand-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.nav-drawer .brand-sub {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.nav-drawer .scene-menu {
-  border-right: none;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
 }
 </style>
