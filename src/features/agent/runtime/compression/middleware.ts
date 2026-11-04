@@ -1,7 +1,7 @@
 /*前文压缩中间层：每次调用模型前估算上下文，超过阈值就把早期消息换成摘要。
 压缩是优化而不是必需步骤，除了用户中止，任何失败都只跳过压缩，让任务照常继续。*/
 import { createMiddleware } from 'langchain';
-import type { BaseMessage, MessageContent } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
 import { toErrorMessage } from '@/shared/contracts/errors';
 import { buildCompactedMessages, isSummaryMessage, planCompaction, type CompactionResult } from './compaction';
 import { summarizeWithFallback, type SummaryCandidate, type SummaryResult } from './summarizer';
@@ -20,18 +20,9 @@ export type ContextCompressorOptions = {
     onSummary?: (result: SummaryResult) => void;
 };
 
-/** 一次任务的压缩器：记录本轮生成的摘要消息，全部候选都失败后本轮不再尝试。 */
+/** 一次任务的压缩器：全部候选都失败后本轮不再尝试。不保存其他状态，从检查点恢复后行为不变。 */
 export function createContextCompressor(options: ContextCompressorOptions) {
-    const originals = new Map<string, MessageContent>();
     let disabled = false;
-
-    const originalContent = (message: BaseMessage): MessageContent => {
-        if (isSummaryMessage(message) && message.id) {
-            const original = originals.get(message.id);
-            if (original !== undefined) return original;
-        }
-        return message.content as MessageContent;
-    };
 
     return async function compress(messages: readonly BaseMessage[]): Promise<CompactionResult | null> {
         if (disabled || estimateMessagesTokens(messages) < options.triggerTokens) return null;
@@ -55,11 +46,7 @@ export function createContextCompressor(options: ContextCompressorOptions) {
                 return null;
             }
             options.onSummary?.(summary);
-            const result = buildCompactedMessages(plan, summary.text, originalContent);
-            if (result.openerOriginal !== undefined && result.opener.id) {
-                originals.set(result.opener.id, result.openerOriginal);
-            }
-            return result;
+            return buildCompactedMessages(plan, summary.text);
         } catch (error) {
             if (options.signal?.aborted) throw error;
             disabled = true;

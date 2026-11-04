@@ -23,6 +23,8 @@ import {
     applySettingsPatch,
     DEFAULT_SETTINGS,
     normalizeCompressionSettings,
+    normalizeModelSettings,
+    normalizeProviderProfiles,
     PROVIDER_IDS,
     snapshotProviderProfile,
     type AgentSettings,
@@ -320,10 +322,10 @@ export async function loadSettings(): Promise<AgentSettings> {
     const settings: AgentSettings = {
         ...DEFAULT_SETTINGS,
         ...stored,
-        model: { ...DEFAULT_SETTINGS.model, ...stored.model },
+        model: normalizeModelSettings(stored.model),
         memory: { ...DEFAULT_SETTINGS.memory, ...stored.memory },
         compression: normalizeCompressionSettings(stored.compression),
-        providerProfiles: { ...DEFAULT_SETTINGS.providerProfiles, ...stored.providerProfiles },
+        providerProfiles: normalizeProviderProfiles(stored.providerProfiles),
     };
     // @langchain/openai 1.5 only recognizes OpenAI reasoning-summary events,
     // while DeepSeek Responses streams response.reasoning_text.delta.

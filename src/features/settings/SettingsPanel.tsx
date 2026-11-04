@@ -29,6 +29,7 @@ import {
     type ProviderId,
 } from '@/shared/contracts/settings';
 import { CompressionSettingsSection } from './CompressionSettingsSection';
+import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 import { MemorySettingsSection } from './MemorySettingsSection';
 import { openDetailedSettings } from './open-options';
 //综合设置面板：以 patch→settings.set 为统一保存通道，
@@ -81,15 +82,21 @@ function SettingRow({
     );
 }
 
-export function SettingsPanel({
-                                  settings,
-                                  onChange,
-                                  variant = 'panel',
-                              }: {
+type SettingsPanelProps = {
     settings: AgentSettings;
     onChange: (settings: AgentSettings) => void;
     variant?: 'panel' | 'page';
-}) {
+};
+
+export function SettingsPanel(props: SettingsPanelProps) {
+    return (
+        <ErrorBoundary label="设置">
+            <SettingsPanelContent {...props} />
+        </ErrorBoundary>
+    );
+}
+
+function SettingsPanelContent({ settings, onChange, variant = 'panel' }: SettingsPanelProps) {
     const [key, setKey] = useState('');
     const [keys, setKeys] = useState<Record<string, boolean>>({});
     const [permissions, setPermissions] = useState<PermissionState>();

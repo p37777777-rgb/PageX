@@ -5,7 +5,7 @@ import { getActiveTab } from '@/shared/browser/tabs';
 import { TOGGLE_PANEL_COMMAND } from '@/shared/extension/hotkey';
 import { installServiceWorkerKeepAlive } from '@/shared/extension/keepalive';
 import { archiveTabNavigation, clearTabStoreState } from '@/features/agent/background/tab-store';
-import { running, stopAgentForTab } from '@/features/agent/background/agent-controller';
+import { resumeAgent, running, stopAgentForTab } from '@/features/agent/background/agent-controller';
 import { clearCurrentPageHidden, handleRpc } from '@/features/agent/background/rpc-router';
 import { recoverInterruptedSessions } from '@/features/agent/background/session-recovery';
 import { syncMcpServers } from '@/features/mcp/background/mcp-manager';
@@ -16,7 +16,7 @@ import { recordBrowserAction } from '@/features/teaching/background/teaching-con
 //安装保活，监听标签页关闭、扩展图标、快捷键和运行时消息，再把消息交给 RPC 路由。业务不要堆在这个文件里。
 export default defineBackground(() => {
     installServiceWorkerKeepAlive();
-    void recoverInterruptedSessions().catch(() => {});
+    void recoverInterruptedSessions(resumeAgent).catch(() => {});
     void syncMcpServers().catch((error) => console.warn('MCP 连接失败', error));
     startMcpHostClient();
 

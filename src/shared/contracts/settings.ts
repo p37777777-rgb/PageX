@@ -362,6 +362,47 @@ export function clampCompressionTrigger(value: number): number {
     return Math.min(COMPRESSION_TRIGGER_LIMITS.max, Math.max(COMPRESSION_TRIGGER_LIMITS.min, Math.round(value)));
 }
 //把当前模型设置「快照」成 profile，用于切换时记忆。
+export function isProviderId(value: unknown): value is ProviderId {
+    return typeof value === 'string' && (PROVIDER_IDS as readonly string[]).includes(value);
+}
+
+function isApiProtocol(value: unknown): value is ApiProtocol {
+    return typeof value === 'string' && (API_PROTOCOLS as readonly string[]).includes(value);
+}
+
+/**
+ * 清洗存储里读出的模型设置。旧版本或手改的数据可能带着已不存在的服务商 id，
+ * 设置页按服务商查预设和模型目录时会拿到 undefined 并让整个界面崩溃，所以这里统一兜底。
+ */
+export function normalizeModelSettings(value: unknown): ModelSettings {
+    const raw = value && typeof value === 'object' ? (value as Partial<Record<keyof ModelSettings, unknown>>) : {};
+    const fallback = DEFAULT_SETTINGS.model;
+    if (!isProviderId(raw.provider)) return { ...fallback };
+    const preset = PROVIDER_PRESETS[raw.provider];
+    const next: ModelSettings = {
+        provider: raw.provider,
+        model: typeof raw.model === 'string' && raw.model.trim() ? raw.model : preset.model,
+        apiProtocol: isApiProtocol(raw.apiProtocol) ? raw.apiProtocol : preset.apiProtocol,
+        persistKey: typeof raw.persistKey === 'boolean' ? raw.persistKey : fallback.persistKey,
+    };
+    if (typeof raw.baseURL === 'string') next.baseURL = raw.baseURL;
+    return next;
+}
+
+/** 只保留已知服务商、字段完整的记忆配置。 */
+export function normalizeProviderProfiles(value: unknown): Partial<Record<ProviderId, ProviderProfile>> {
+    const profiles: Partial<Record<ProviderId, ProviderProfile>> = {};
+    if (!value || typeof value !== 'object') return profiles;
+    for (const [provider, profile] of Object.entries(value as Record<string, unknown>)) {
+        if (!isProviderId(provider) || !profile || typeof profile !== 'object') continue;
+        const raw = profile as Partial<Record<keyof ProviderProfile, unknown>>;
+        if (typeof raw.model !== 'string' || !isApiProtocol(raw.apiProtocol)) continue;
+        profiles[provider] = { model: raw.model, apiProtocol: raw.apiProtocol };
+        if (typeof raw.baseURL === 'string') profiles[provider]!.baseURL = raw.baseURL;
+    }
+    return profiles;
+}
+
 export function snapshotProviderProfile(model: ModelSettings): ProviderProfile {
     const profile: ProviderProfile = {
         model: model.model,
@@ -409,6 +450,10 @@ export function applySettingsPatch(current: AgentSettings, patch: AgentSettingsP
 
     const persistKey = patch.model?.persistKey ?? current.model.persistKey;
     let model: ModelSettings;
+    if (patch.model?.provider !== undefined && !isProviderId(patch.model.provider)) {
+        // settings.set 的载荷只做了透传校验，未知服务商直接忽略这次切换。
+        patch = { ...patch, model: { ...patch.model, provider: current.model.provider } };
+    }
     if (patch.model?.provider && patch.model.provider !== current.model.provider) {
         model = mergeModelSettings(
             modelSettingsForProvider(patch.model.provider, profiles, persistKey),

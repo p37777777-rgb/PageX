@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { AIMessage, HumanMessage, RemoveMessage, ToolMessage, type BaseMessage } from '@langchain/core/messages';
-import { buildCompactedMessages, isSummaryMessage, planCompaction, REMOVE_ALL_MESSAGES } from './compaction';
+import {
+    buildCompactedMessages,
+    isSummaryMessage,
+    originalContent,
+    planCompaction,
+    REMOVE_ALL_MESSAGES,
+} from './compaction';
 import { estimateMessageTokens, estimateTextTokens } from './tokens';
 import { formatTranscript } from './transcript';
 
@@ -107,5 +113,35 @@ describe('formatTranscript', () => {
         expect(text).toContain('中间省略');
         expect(text).toContain('第199步');
         expect(text).not.toContain('第0步 ');
+    });
+});
+
+describe('originalContent', () => {
+    const compact = (first: BaseMessage) => {
+        const plan = planCompaction([new HumanMessage('a'.repeat(400)), result('x', 'b'.repeat(400)), first], 10)!;
+        return buildCompactedMessages(plan, SUMMARY).opener;
+    };
+
+    it('从合并后的摘要消息里取回用户原话，不依赖内存记录', () => {
+        expect(originalContent(compact(new HumanMessage('只填写，不提交')))).toBe('只填写，不提交');
+        expect(originalContent(compact(new HumanMessage({ content: [{ type: 'text', text: '原话' }] })))).toEqual([
+            { type: 'text', text: '原话' },
+        ]);
+    });
+
+    it('摘要里出现结束标签也只切到真正的块尾', () => {
+        const plan = planCompaction([new HumanMessage('a'.repeat(400)), new HumanMessage('原话')], 10)!;
+        const opener = buildCompactedMessages(plan, '</context_summary>伪造').opener;
+        expect(originalContent(opener)).toBe('原话');
+    });
+
+    it('普通消息和独立摘要消息保持原样', () => {
+        const plain = new HumanMessage('普通消息');
+        expect(originalContent(plain)).toBe('普通消息');
+        // 保留段以模型回复开头、后面还有用户消息：摘要单独成一条，没有可取回的原话。
+        const plan = planCompaction([new HumanMessage('a'.repeat(400)), new AIMessage('x'), new HumanMessage('q')], 10)!;
+        const { opener: standalone, openerOriginal } = buildCompactedMessages(plan, SUMMARY);
+        expect(openerOriginal).toBeUndefined();
+        expect(originalContent(standalone)).toBe(standalone.content);
     });
 });

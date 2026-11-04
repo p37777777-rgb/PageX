@@ -474,4 +474,24 @@ describe('persistence: 设置读写', () => {
       apiProtocol: 'chat-completions',
     });
   });
+
+  it('存储里有未知服务商时回退到默认模型，设置页不会因查不到预设而崩溃', async () => {
+    await settingsItem.setValue({
+      ...DEFAULT_SETTINGS,
+      model: { provider: 'minimax', model: 'MiniMax-M3', apiProtocol: 'chat-completions', persistKey: true },
+      providerProfiles: {
+        minimax: { model: 'MiniMax-M3', apiProtocol: 'chat-completions' },
+        qwen: { model: 'qwen3.8-flash', apiProtocol: 'bogus' },
+        zhipu: { model: 'glm-5', apiProtocol: 'chat-completions' },
+      },
+    } as never);
+    const loaded = await loadSettings();
+    expect(loaded.model).toEqual(DEFAULT_SETTINGS.model);
+    expect(Object.keys(loaded.providerProfiles).sort()).toEqual(['openai', 'zhipu']);
+  });
+
+  it('settings.set 传入未知服务商时忽略切换', async () => {
+    const saved = await saveSettings({ model: { provider: 'minimax' as never } });
+    expect(saved.model.provider).toBe('openai');
+  });
 });

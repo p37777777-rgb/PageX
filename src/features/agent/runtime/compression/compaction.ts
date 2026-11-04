@@ -7,7 +7,7 @@ import {
     type BaseMessage,
     type MessageContent,
 } from '@langchain/core/messages';
-import { buildContextSummaryBlock } from '@/features/agent/runtime/prompts';
+import { buildContextSummaryBlock, CONTEXT_SUMMARY_CLOSE } from '@/features/agent/runtime/prompts';
 import { nowId } from '@/shared/utils/utils';
 import { prependText } from './content';
 import { estimateMessageTokens, estimateMessagesTokens } from './tokens';
@@ -23,6 +23,26 @@ const SUMMARY_SOURCE = 'pagex-compression';
 
 export function isSummaryMessage(message: BaseMessage): boolean {
     return HumanMessage.isInstance(message) && message.additional_kwargs?.lc_source === SUMMARY_SOURCE;
+}
+
+/**
+ * 去掉摘要消息开头的旧摘要块，取回被它合并的用户原话，避免再次压缩时摘要一层层嵌套。
+ * 直接从内容里切，不依赖内存记录，扩展后台重启、从检查点恢复后照样可用。
+ * 独立的摘要消息（没有合并原话）保留原样：它的信息还没进入新摘要，去掉就丢了。
+ */
+export function originalContent(message: BaseMessage): MessageContent {
+    const content = message.content as MessageContent;
+    if (!isSummaryMessage(message)) return content;
+    if (typeof content === 'string') {
+        const end = content.indexOf(CONTEXT_SUMMARY_CLOSE);
+        if (end < 0) return content;
+        const rest = content.slice(end + CONTEXT_SUMMARY_CLOSE.length).replace(/^\s+/, '');
+        return rest || content;
+    }
+    const first = content[0] as { type?: unknown; text?: unknown } | undefined;
+    const isBlock =
+        first?.type === 'text' && typeof first.text === 'string' && first.text.trimEnd().endsWith(CONTEXT_SUMMARY_CLOSE);
+    return isBlock && content.length > 1 ? content.slice(1) : content;
 }
 
 export type CompactionPlan = {
@@ -59,7 +79,7 @@ export type CompactionResult = {
     update: BaseMessage[];
     /** 新序列开头的消息：摘要块加上被它取代的那条用户消息原文。 */
     opener: HumanMessage;
-    /** opener 合并前的用户消息原文；下次压缩时用它取回原话，避免旧摘要被一层层嵌套。 */
+    /** opener 合并前的用户消息原文；没有可合并的用户消息时为空。 */
     openerOriginal?: MessageContent;
 };
 
@@ -73,7 +93,6 @@ export type CompactionResult = {
 export function buildCompactedMessages(
     plan: CompactionPlan,
     summary: string,
-    originalContent: (message: BaseMessage) => MessageContent = (message) => message.content as MessageContent,
 ): CompactionResult {
     let rest = plan.tail;
     let anchor: BaseMessage | undefined;

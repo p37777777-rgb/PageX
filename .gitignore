@@ -101,3 +101,16 @@ public/wxt.svg
 public/pagex-bot.svg
 src/assets/react.svg
 src/assets/pagex-bot.svg
+
+# --- Non-project files (explicit, guards against future whitelist edits) --
+# Local backup archive of uncommitted changes (checkpoint-resume restore source)
+/changes/
+# Personal study notes and scratch pages
+/learning/
+/day01.html
+/git-upload-commands.md
+# WorkBuddy agent workspace data (memory, tasks)
+/.workbuddy/
+# IDE folders
+/.idea/
+/.vscode/

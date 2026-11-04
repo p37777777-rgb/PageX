@@ -1,5 +1,7 @@
 import { CHANNEL } from '@/shared/contracts/channel';
 import { runAgent } from '@/features/agent/runtime/runtime';
+import { getAgentCheckpointer, readResumeState } from '@/features/agent/runtime/checkpointer';
+import { dropUnfinishedAssistantOutput } from '@/features/agent/session/messages';
 import {
     createPageStore,
     emptyConversation,
@@ -9,7 +11,14 @@ import { adoptLiveStore, applyAgentEventToStore, nextStoreRevision } from '@/fea
 import { conversationVaultKey } from '@/features/agent/session/vault';
 import { loadSettings, saveTabUi } from '@/shared/storage/storage';
 import type { AgentEvent } from '@/shared/contracts/agent';
-import type { ChatMessage, PageConversationStore, UserBadge, UserReference } from '@/shared/contracts/session';
+import type {
+    ChatMessage,
+    Checkpoint,
+    PageConversation,
+    PageConversationStore,
+    UserBadge,
+    UserReference,
+} from '@/shared/contracts/session';
 import { nowId } from '@/shared/utils/utils';
 import { beginBusyKeepAlive, endBusyKeepAlive } from '@/shared/extension/keepalive';
 import { createBridge, ensureContentScript, sendToContent } from './content-bridge';
@@ -201,24 +210,102 @@ export async function startAgent(
         revision,
     };
     const control: AgentControl = { abort, conversationId: targetId, sessionId, store, tabId };
+    await launchRun(control, targetId, currentUrl, {
+        prompt,
+        context,
+        history,
+        imageDataUrl,
+        badges,
+        references,
+    });
+    return { ok: true, tabId, sessionId, conversationId: targetId };
+}
+
+/**
+ * 扩展后台重启后，从 LangGraph 检查点接着跑被打断的任务，沿用原来的 sessionId（也是线程 id）。
+ * 标签页已关闭、线程不存在或这个标签页已有任务时返回 false，由调用方按旧流程标记中断。
+ */
+export async function resumeAgent(checkpoint: Checkpoint): Promise<boolean> {
+    const { sessionId, tabId } = checkpoint;
+    if (!sessionId || findRunningByTab(tabId) || running.get(tabId)) return false;
+    try {
+        await browser.tabs.get(tabId);
+    } catch {
+        return false;
+    }
+    const state = await readResumeState(getAgentCheckpointer(), sessionId);
+    if (!state) return false;
+    const messages = state.rerunsModel ? dropUnfinishedAssistantOutput(checkpoint.messages) : checkpoint.messages;
+    const currentUrl = await resolveTabUrl(tabId);
+    const existing =
+        (await readTabStore(tabId)) ?? createPageStore(conversationVaultKey(currentUrl ?? '') ?? undefined);
+    const targetId = checkpoint.conversationId ?? existing.activeId;
+    const resumed = (item: PageConversation): PageConversation => ({
+        ...item,
+        revision: (item.revision ?? 0) + 1,
+        updatedAt: Date.now(),
+        messages,
+        tasks: checkpoint.tasks,
+        budget: { modelCalls: checkpoint.modelCalls, toolCalls: checkpoint.toolCalls },
+        running: true,
+        thinking: '正在从中断处继续…',
+        startedAt: item.startedAt ?? Date.now(),
+        error: '',
+    });
+    let conversations = existing.conversations.map((item) => (item.id === targetId ? resumed(item) : item));
+    if (!conversations.some((item) => item.id === targetId)) {
+        const item = emptyConversation('中断的任务', tabDomains.get(tabId) ? [tabDomains.get(tabId)!] : []);
+        item.id = targetId;
+        conversations = [...conversations, resumed(item)];
+    }
+    const store: PageConversationStore = {
+        ...existing,
+        activeId: targetId,
+        conversations,
+        sessionId,
+        revision: nextStoreRevision(existing),
+    };
+    const control: AgentControl = { abort: new AbortController(), conversationId: targetId, sessionId, store, tabId };
+    await launchRun(control, targetId, currentUrl, {
+        prompt: checkpoint.prompt ?? '',
+        resume: {
+            messages,
+            tasks: checkpoint.tasks,
+            modelCalls: checkpoint.modelCalls,
+            toolCalls: checkpoint.toolCalls,
+            resumeCount: (checkpoint.resumeCount ?? 0) + 1,
+            interruptedToolCallIds: state.interruptedToolCallIds,
+        },
+    });
+    return true;
+}
+
+type RunInput = Pick<
+    Parameters<typeof runAgent>[0],
+    'prompt' | 'context' | 'history' | 'imageDataUrl' | 'badges' | 'references' | 'resume'
+>;
+
+/** 登记运行、保持后台常驻，并把运行时事件写回会话、广播给标签页。 */
+async function launchRun(
+    control: AgentControl,
+    targetId: string,
+    currentUrl: string | undefined,
+    input: RunInput,
+): Promise<void> {
+    const { abort, sessionId, tabId } = control;
     running.set(tabId, control);
-    tabStores.set(tabId, store);
-    await writeTabStore(tabId, store);
+    tabStores.set(tabId, control.store);
+    await writeTabStore(tabId, control.store);
     beginBusyKeepAlive();
     const settings = await loadSettings();
     const isCurrent = () => findRunningByTab(control.tabId)?.abort === abort;
     const done = runAgent({
-        prompt,
-        context,
+        ...input,
         tabId,
         url: currentUrl,
         getTabId: () => control.tabId,
         sessionId,
         conversationId: targetId,
-        history,
-        imageDataUrl,
-        badges,
-        references,
         bridge: createBridge(control, settings, retargetAgent),
         emit: (event) => {
             if (!isCurrent()) return;
@@ -237,7 +324,6 @@ export async function startAgent(
         endBusyKeepAlive();
     });
     void done.catch(() => undefined);
-    return { ok: true, tabId, sessionId, conversationId: targetId };
 }
 
 export function stopAgent(tabId: number) {

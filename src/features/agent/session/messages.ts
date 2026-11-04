@@ -250,6 +250,22 @@ export function applyAssistantToolResult(
     );
 }
 
+/**
+ * 去掉最后一条助手消息里、最后一个工具之后的文字和思考。
+ * 从检查点恢复且要重新调用模型时使用：中断前流式输出的半截回复会被新回复完整替代。
+ * 去掉后什么都不剩的助手消息整条删除。
+ */
+export function dropUnfinishedAssistantOutput(messages: ChatMessage[]): ChatMessage[] {
+    const last = messages.at(-1);
+    if (last?.role !== 'assistant') return messages;
+    const parts = messageParts(last);
+    let keep = parts.length;
+    while (keep > 0 && parts[keep - 1]?.type !== 'tool') keep -= 1;
+    if (keep === parts.length) return messages;
+    if (keep === 0) return messages.slice(0, -1);
+    return [...messages.slice(0, -1), syncDerived(last, parts.slice(0, keep))];
+}
+
 export function applyAssistantUsage(messages: ChatMessage[], usage: TurnUsage, id: string): ChatMessage[] {
     const last = messages.at(-1);
     if (last?.role === 'assistant') {

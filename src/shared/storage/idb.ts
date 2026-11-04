@@ -1,5 +1,5 @@
 const DB_NAME = 'PageX';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 //封装的IndexedDB API
 export const SESSION_STORES = {
     conversations: 'conversations',
@@ -9,6 +9,7 @@ export const SESSION_STORES = {
     teaching: 'teaching',
     commands: 'commands',
     memories: 'memories',
+    agentThreads: 'agentThreads',
 } as const;
 
 export type SessionStoreName = (typeof SESSION_STORES)[keyof typeof SESSION_STORES];
@@ -93,6 +94,14 @@ export async function idbGetAll<T>(store: SessionStoreName): Promise<Record<stri
         result[String(item)] = values[index] as T;
     });
     return result;
+}
+//只取所有键，不把值读进内存
+export async function idbGetAllKeys(store: SessionStoreName): Promise<string[]> {
+    const db = await openSessionDb();
+    const tx = db.transaction(store, 'readonly');
+    const keys = await requestToPromise(tx.objectStore(store).getAllKeys());
+    await complete(tx);
+    return keys.map(String);
 }
 //替换所有数据
 export async function idbReplaceAll<T>(store: SessionStoreName, next: Record<string, T>): Promise<void> {

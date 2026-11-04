@@ -84,4 +84,6 @@ export type Checkpoint = {
     revision?: number;
     modelCalls: number;
     toolCalls: number;
+    /** 已从 LangGraph 检查点自动恢复的次数，超过上限就不再自动续跑。 */
+    resumeCount?: number;
 };
